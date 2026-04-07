@@ -31,6 +31,15 @@ app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 400 }));
 
+app.get("/", (_, res) =>
+  res.json({
+    ok: true,
+    service: "ishaka-market-backend",
+    message: "API is running. Use /health or /api/v1/...",
+    health: "/health",
+    api: "/api/v1"
+  })
+);
 app.get("/health", (_, res) => res.json({ ok: true, service: "ishaka-market-backend" }));
 app.use("/api/v1", routes);
 
