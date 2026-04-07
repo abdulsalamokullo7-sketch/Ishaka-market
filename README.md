@@ -13,8 +13,8 @@ Production-oriented full-stack marketplace for Ishaka, Uganda:
 - Backend: Node.js + Express REST API
 - Database: PostgreSQL
 - Cache (optional): Redis-ready config placeholder
-- Storage: Cloudinary-ready env variables
-- Auth: JWT + RBAC (`admin`, `seller`, `user`)
+- Storage: Cloudinary-ready env variables; optional Firebase Storage via `frontend/lib/firebase.js`
+- Auth: JWT + RBAC (`admin`, `seller`, `user`); optional Firebase Auth can be wired alongside the API
 
 ## Project Structure
 
@@ -61,6 +61,26 @@ npm run dev
 ```
 
 Frontend runs at `http://localhost:3000`.
+
+### Firebase (optional, frontend)
+
+Used for **Authentication**, **Storage** (listing images), or **Firestore** as you implement features. Core marketplace data stays in **PostgreSQL** via the Express API.
+
+1. [Firebase Console](https://console.firebase.google.com/) → Create or select a project.
+2. **Project settings** (gear) → **Your apps** → Add **Web** app → copy the config object.
+3. In `frontend/.env.local` (and Vercel **Environment Variables**), set:
+
+   - `NEXT_PUBLIC_FIREBASE_API_KEY`
+   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `NEXT_PUBLIC_FIREBASE_APP_ID`
+
+4. In Firebase Console, enable what you need: **Authentication** (e.g. Email/Phone), **Storage** (rules), etc.
+5. Import helpers from `frontend/lib/firebase.js`: `getFirebaseApp`, `getFirebaseAuth`, `getFirebaseStorage`, `getFirebaseDb`.
+
+If env vars are missing, the app still runs; Firebase helpers return `null` and a dev warning is logged.
 
 ## Deploy Backend on Render
 
