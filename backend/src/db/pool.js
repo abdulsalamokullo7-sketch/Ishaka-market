@@ -2,13 +2,9 @@ const { Pool } = require("pg");
 const env = require("../config/env");
 
 const isProd = env.nodeEnv === "production";
-const useSsl =
-  isProd &&
-  env.dbUrl &&
-  (env.dbUrl.includes("render.com") ||
-    env.dbUrl.includes("sslmode=require") ||
-    env.dbUrl.includes("neon.tech") ||
-    env.dbUrl.includes("supabase"));
+const isRemoteDb =
+  env.dbUrl && !/localhost|127\.0\.0\.1/.test(env.dbUrl);
+const useSsl = isProd && isRemoteDb;
 
 const pool = new Pool({
   connectionString: env.dbUrl,

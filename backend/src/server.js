@@ -65,16 +65,59 @@ app.get("/", (_, res) =>
 app.get("/health", (_, res) => res.json({ ok: true, service: "ishaka-market-backend" }));
 app.use("/api/v1", routes);
 
+function mapErrorToResponse(err) {
+  const code = err && err.code;
+  if (code === "42P01") {
+    return {
+      status: 503,
+      body: {
+        message:
+          'Tables are missing. On Render: Web Service → Shell → run: npm run seed (applies schema + sample data).',
+        code
+      }
+    };
+  }
+  if (code === "3D000") {
+    return {
+      status: 503,
+      body: { message: "Database name in DATABASE_URL does not exist.", code }
+    };
+  }
+  if (code === "28P01" || code === "28000") {
+    return {
+      status: 503,
+      body: { message: "Database login failed. Copy Internal DATABASE_URL from Render Postgres → your web service env.", code }
+    };
+  }
+  if (code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "ETIMEDOUT") {
+    return {
+      status: 503,
+      body: { message: "Cannot reach database host. Check DATABASE_URL and that Postgres is running.", code }
+    };
+  }
+  const status = err.statusCode || err.status;
+  const safeStatus = status >= 400 && status < 600 ? status : 500;
+  return {
+    status: safeStatus,
+    body: {
+      message: err.message || "Internal server error",
+      ...(code ? { code } : {})
+    }
+  };
+}
+
 app.use((err, _req, res, _next) => {
   // eslint-disable-next-line no-console
   console.error(err);
-  const status = err.statusCode || err.status || 500;
-  return res.status(status >= 400 && status < 600 ? status : 500).json({
-    message: err.message || "Internal server error"
-  });
+  const mapped = mapErrorToResponse(err);
+  return res.status(mapped.status).json(mapped.body);
 });
 
 app.listen(env.port, () => {
   // eslint-disable-next-line no-console
   console.log(`API running on port ${env.port}`);
+  if (!env.dbUrl) {
+    // eslint-disable-next-line no-console
+    console.warn("[WARN] DATABASE_URL is not set — API routes that use Postgres will fail.");
+  }
 });
