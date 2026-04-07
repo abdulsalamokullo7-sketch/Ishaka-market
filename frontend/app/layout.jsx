@@ -3,7 +3,10 @@ import NavBar from "../components/NavBar";
 
 export const metadata = {
   title: "Ishaka Market Hub",
-  description: "Local market and logistics platform for Ishaka"
+  description: "Local market and logistics platform for Ishaka",
+  icons: {
+    icon: "/icon.svg"
+  }
 };
 
 export default function RootLayout({ children }) {

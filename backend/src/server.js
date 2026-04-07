@@ -1,4 +1,5 @@
 const express = require("express");
+require("express-async-errors");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
@@ -64,8 +65,13 @@ app.get("/", (_, res) =>
 app.get("/health", (_, res) => res.json({ ok: true, service: "ishaka-market-backend" }));
 app.use("/api/v1", routes);
 
-app.use((err, _, res, __) => {
-  return res.status(500).json({ message: err.message || "Internal server error" });
+app.use((err, _req, res, _next) => {
+  // eslint-disable-next-line no-console
+  console.error(err);
+  const status = err.statusCode || err.status || 500;
+  return res.status(status >= 400 && status < 600 ? status : 500).json({
+    message: err.message || "Internal server error"
+  });
 });
 
 app.listen(env.port, () => {

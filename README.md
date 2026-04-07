@@ -100,6 +100,17 @@ If env vars are missing, the app still runs; Firebase helpers return `null` and 
 8. Put that URL in Vercel frontend env:
    - `NEXT_PUBLIC_API_URL=https://<your-render-service>.onrender.com/api/v1`
 
+### Render: 502 + “CORS” in the browser
+
+A **502 Bad Gateway** from `*.onrender.com` means Render’s proxy did not get a normal response from your Node app (crash, timeout, or DB failure). The browser may also show **“blocked by CORS”** and **“No Access-Control-Allow-Origin”** because **502 error pages from the proxy are not your Express CORS headers**.
+
+Fix the backend first:
+
+1. **Render → Web Service → Environment** — ensure **`DATABASE_URL`** is set (link the Postgres database to the service, or paste the **Internal Database URL** from the database dashboard).
+2. **Logs** — open **Logs** and look for `ECONNREFUSED`, `password authentication failed`, or uncaught errors when hitting `/api/v1/areas`.
+3. After deploy, in **Shell** run: `npm run seed` (creates tables + seed data if the DB is empty).
+4. Test: `https://<your-service>.onrender.com/health` should return JSON **200**. Then test `/api/v1/categories`.
+
 ## Seed Credentials
 
 - Admin phone: `+256700000001`
