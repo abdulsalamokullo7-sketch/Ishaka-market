@@ -62,6 +62,24 @@ npm run dev
 
 Frontend runs at `http://localhost:3000`.
 
+## Deploy Backend on Render
+
+1. Push latest code to GitHub (already done).
+2. In Render, click **New +** -> **Blueprint**.
+3. Select your repo: `abdulsalamokullo7-sketch/Ishaka-market`.
+4. Render detects `render.yaml` and creates:
+   - Web service: `ishaka-market-backend`
+   - PostgreSQL: `ishaka-market-db`
+5. Set required env values in Render service:
+   - `FRONTEND_ORIGIN` = your Vercel frontend URL (example: `https://ishaka-market.vercel.app`)
+   - Optional Cloudinary keys if you enable uploads
+6. Deploy. After first deploy, open Render Shell and run:
+   - `npm run seed`
+7. Backend base URL becomes:
+   - `https://<your-render-service>.onrender.com/api/v1`
+8. Put that URL in Vercel frontend env:
+   - `NEXT_PUBLIC_API_URL=https://<your-render-service>.onrender.com/api/v1`
+
 ## Seed Credentials
 
 - Admin phone: `+256700000001`

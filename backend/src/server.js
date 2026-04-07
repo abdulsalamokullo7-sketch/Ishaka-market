@@ -8,8 +8,25 @@ const routes = require("./routes");
 
 const app = express();
 
+const corsAllowedOrigins = [
+  "https://ishaka-market.vercel.app",
+  env.frontendOrigin,
+  "http://localhost:3000"
+].filter(Boolean);
+
 app.use(helmet());
-app.use(cors({ origin: env.frontendOrigin }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || corsAllowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true
+  })
+);
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 400 }));
