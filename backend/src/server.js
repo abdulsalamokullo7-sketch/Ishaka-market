@@ -11,25 +11,46 @@ const app = express();
 const corsAllowedOrigins = [
   "https://ishaka-market.vercel.app",
   env.frontendOrigin,
-  "http://localhost:3000"
-].filter(Boolean);
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
+]
+  .filter(Boolean)
+  .map((o) => o.replace(/\/$/, ""));
 
-app.use(helmet());
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  if (corsAllowedOrigins.includes(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return true;
+  return false;
+}
+
+// CORS must run before helmet so preflight and API responses always get Access-Control-* headers.
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || corsAllowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
+    origin(origin, callback) {
+      if (isOriginAllowed(origin)) return callback(null, true);
+      return callback(null, false);
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    credentials: true
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+    optionsSuccessStatus: 204
+  })
+);
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 400 }));
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 400,
+    skip: (req) => req.method === "OPTIONS"
+  })
+);
 
 app.get("/", (_, res) =>
   res.json({
