@@ -11,8 +11,19 @@ export async function api(path, options = {}) {
     },
     cache: "no-store"
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Request failed");
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(res.statusText || "Request failed");
+  }
+  if (!res.ok) {
+    const msg =
+      Array.isArray(data.errors) && data.errors.length
+        ? data.errors.join(" ")
+        : data.message || `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
   return data;
 }
 
