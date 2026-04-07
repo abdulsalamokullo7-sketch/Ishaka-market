@@ -7,12 +7,22 @@ require("dotenv").config({
   override: true
 });
 
-const dbUrl = process.env.DATABASE_URL;
-if (dbUrl && !/^postgres(ql)?:\/\//i.test(dbUrl.trim())) {
+function normalizeDatabaseUrl(raw) {
+  if (!raw) return "";
+  return raw
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+}
+
+let dbUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
+if (dbUrl) {
+  process.env.DATABASE_URL = dbUrl;
+}
+if (dbUrl && !/^postgres(ql)?:\/\//i.test(dbUrl)) {
   throw new Error(
-    "DATABASE_URL must be a full URL starting with postgresql:// (from Render → Postgres → Connections). " +
-      "If you set DATABASE_URL in Windows Environment Variables to paste_external_url_here, remove or fix it — " +
-      "it overrides backend/.env unless you use override in dotenv (already enabled)."
+    "DATABASE_URL must start with postgresql:// or postgres:// (one line, no spaces before the URL). " +
+      "Copy it from Render → PostgreSQL → Connections. Remove any Windows env var DATABASE_URL that is still a placeholder."
   );
 }
 
