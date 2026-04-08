@@ -10,8 +10,10 @@ export default function PostListingPage() {
   const [categories, setCategories] = useState([]);
   const [areas, setAreas] = useState([]);
   const [form, setForm] = useState({
-    title: "", description: "", price: "", category_id: "", area_id: "", image_urls: ""
+    title: "", description: "", price: "", category_id: "", area_id: ""
   });
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
@@ -34,7 +36,6 @@ export default function PostListingPage() {
     e.preventDefault();
     setErr("");
     setMsg("");
-    const image_urls = form.image_urls.split(",").map((s) => s.trim()).filter(Boolean);
     const price = Number(form.price);
     if (!form.title?.trim() || !form.description?.trim() || !form.category_id || !form.area_id) {
       setErr("Fill title, description, category, and area.");
@@ -44,8 +45,32 @@ export default function PostListingPage() {
       setErr("Enter a valid price.");
       return;
     }
-    if (image_urls.length < 1) {
-      setErr("Add at least one image URL (comma-separated https:// links).");
+    if (files.length < 1) {
+      setErr("Add at least one image from your device or camera.");
+      return;
+    }
+    setUploading(true);
+    let image_urls = [];
+    try {
+      for (const file of files) {
+        const sign = await fetchWithAuth("/uploads/sign", {
+          method: "POST",
+          body: JSON.stringify({
+            file_name: file.name || "image.jpg",
+            content_type: file.type || "image/jpeg"
+          })
+        });
+        const uploadRes = await fetch(sign.upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "image/jpeg" },
+          body: file
+        });
+        if (!uploadRes.ok) throw new Error("Failed to upload image.");
+        image_urls.push(sign.file_url);
+      }
+    } catch (uploadErr) {
+      setUploading(false);
+      setErr(uploadErr.message || "Image upload failed.");
       return;
     }
     const payload = {
@@ -80,6 +105,8 @@ export default function PostListingPage() {
         }
       }
       setErr(msg2);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -102,10 +129,29 @@ export default function PostListingPage() {
         <option value="">Select area</option>
         {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
-      <input className="w-full rounded border p-2" placeholder="Image URLs (comma separated)" onChange={(e) => setForm({ ...form, image_urls: e.target.value })} />
+      <div className="space-y-2 rounded border p-2">
+        <p className="text-sm font-medium">Listing images</p>
+        <input
+          className="w-full rounded border p-2"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          onChange={(e) => setFiles(Array.from(e.target.files || []))}
+        />
+        <input
+          className="w-full rounded border p-2"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => setFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+        />
+        <p className="text-xs text-gray-600">{files.length} image(s) selected</p>
+      </div>
       {err ? <p className="text-sm text-red-600">{err}</p> : null}
       {msg ? <p className="text-green-700">{msg}</p> : null}
-      <button className="w-full rounded bg-brand py-2 text-white">Submit</button>
+      <button disabled={uploading} className="w-full rounded bg-brand py-2 text-white disabled:opacity-60">
+        {uploading ? "Uploading images..." : "Submit"}
+      </button>
     </form>
   );
 }

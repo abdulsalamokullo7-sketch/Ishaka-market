@@ -1,12 +1,39 @@
 const express = require("express");
+const { randomUUID } = require("crypto");
 const bcrypt = require("bcryptjs");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const pool = require("../db/pool");
+const env = require("../config/env");
 const { signToken } = require("../utils/jwt");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const { validate, Joi } = require("../middleware/validate");
 const { getPagination } = require("../utils/pagination");
 
 const router = express.Router();
+const uploadSignSchema = Joi.object({
+  file_name: Joi.string().min(1).max(240).required(),
+  content_type: Joi.string().valid("image/jpeg", "image/png", "image/webp").required()
+});
+
+const r2Enabled = Boolean(
+  env.r2.endpoint &&
+    env.r2.bucket &&
+    env.r2.accessKeyId &&
+    env.r2.secretAccessKey &&
+    env.r2.publicBaseUrl
+);
+
+const s3 = r2Enabled
+  ? new S3Client({
+      region: "auto",
+      endpoint: env.r2.endpoint,
+      credentials: {
+        accessKeyId: env.r2.accessKeyId,
+        secretAccessKey: env.r2.secretAccessKey
+      }
+    })
+  : null;
 
 const registerSchema = Joi.object({
   full_name: Joi.string().min(2).max(160).required(),
@@ -74,6 +101,25 @@ router.get("/areas", async (_, res) => {
 router.get("/categories", async (_, res) => {
   const { rows } = await pool.query("SELECT * FROM categories ORDER BY name ASC");
   return res.json(rows);
+});
+
+router.post("/uploads/sign", requireAuth, validate(uploadSignSchema), async (req, res) => {
+  if (!r2Enabled || !s3) {
+    return res.status(503).json({ message: "Image upload is not configured yet." });
+  }
+  const fileExt = req.body.file_name.includes(".") ? req.body.file_name.split(".").pop().toLowerCase() : "";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes(fileExt)
+    ? fileExt
+    : req.body.content_type.split("/")[1];
+  const key = `listings/${req.user.id}/${Date.now()}-${randomUUID()}.${safeExt}`;
+  const command = new PutObjectCommand({
+    Bucket: env.r2.bucket,
+    Key: key,
+    ContentType: req.body.content_type
+  });
+  const upload_url = await getSignedUrl(s3, command, { expiresIn: 300 });
+  const file_url = `${env.r2.publicBaseUrl.replace(/\/$/, "")}/${key}`;
+  return res.json({ key, upload_url, file_url });
 });
 
 router.post("/admin/areas", requireAuth, requireRole("admin"), validate(Joi.object({
