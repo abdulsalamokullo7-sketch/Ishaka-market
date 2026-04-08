@@ -3,13 +3,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "../lib/api";
 
+const HOME_CACHE_KEY = "home-cache-v1";
+
 export default function HomePage() {
   const [listings, setListings] = useState([]);
   const [categories, setCategories] = useState([]);
   const [areas, setAreas] = useState([]);
   const [query, setQuery] = useState({ q: "", category_id: "", area_id: "" });
+  const [loading, setLoading] = useState(true);
 
   async function load() {
+    setLoading(true);
     const [l, c, a] = await Promise.all([
       api(`/listings?limit=20&q=${encodeURIComponent(query.q)}&category_id=${query.category_id}&area_id=${query.area_id}`),
       api("/categories"),
@@ -18,9 +22,29 @@ export default function HomePage() {
     setListings(l.data);
     setCategories(c);
     setAreas(a);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ listings: l.data, categories: c, areas: a }));
+    }
+    setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const raw = sessionStorage.getItem(HOME_CACHE_KEY);
+      if (raw) {
+        try {
+          const cache = JSON.parse(raw);
+          setListings(Array.isArray(cache.listings) ? cache.listings : []);
+          setCategories(Array.isArray(cache.categories) ? cache.categories : []);
+          setAreas(Array.isArray(cache.areas) ? cache.areas : []);
+          setLoading(false);
+        } catch {
+          // Ignore bad cache.
+        }
+      }
+    }
+    load().catch(() => setLoading(false));
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -41,6 +65,9 @@ export default function HomePage() {
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {loading && listings.length === 0 ? (
+          <p className="text-sm text-gray-500">Loading products...</p>
+        ) : null}
         {listings.map((l) => (
           <Link key={l.id} href={`/listing/${l.id}`} className="rounded-xl bg-white p-3 shadow-sm">
             <img src={l.image_urls?.[0]} alt={l.title} loading="lazy" className="h-40 w-full rounded object-cover" />

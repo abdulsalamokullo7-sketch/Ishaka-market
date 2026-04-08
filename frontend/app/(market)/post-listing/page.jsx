@@ -17,6 +17,43 @@ export default function PostListingPage() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
+  async function compressImage(file) {
+    // Keep small files as-is to avoid unnecessary quality loss.
+    if (file.size <= 350 * 1024) return file;
+    const img = await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const i = new Image();
+      i.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(i);
+      };
+      i.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Could not read image."));
+      };
+      i.src = url;
+    });
+
+    const maxDim = 1600;
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const width = Math.max(1, Math.round(img.width * scale));
+    const height = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, "image/webp", 0.78);
+    });
+    if (!blob) return file;
+    return new File([blob], `${(file.name || "image").replace(/\.[^.]+$/, "")}.webp`, {
+      type: "image/webp"
+    });
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -53,17 +90,18 @@ export default function PostListingPage() {
     let image_urls = [];
     try {
       for (const file of files) {
+        const optimized = await compressImage(file);
         const sign = await fetchWithAuth("/uploads/sign", {
           method: "POST",
           body: JSON.stringify({
-            file_name: file.name || "image.jpg",
-            content_type: file.type || "image/jpeg"
+            file_name: optimized.name || "image.webp",
+            content_type: optimized.type || "image/webp"
           })
         });
         const uploadRes = await fetch(sign.upload_url, {
           method: "PUT",
-          headers: { "Content-Type": file.type || "image/jpeg" },
-          body: file
+          headers: { "Content-Type": optimized.type || "image/webp" },
+          body: optimized
         });
         if (!uploadRes.ok) throw new Error("Failed to upload image.");
         image_urls.push(sign.file_url);

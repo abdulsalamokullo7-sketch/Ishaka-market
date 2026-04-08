@@ -7,6 +7,7 @@ export default function ListingDetails({ params }) {
   const [areas, setAreas] = useState([]);
   const [toArea, setToArea] = useState("");
   const [fare, setFare] = useState(null);
+  const [fareErr, setFareErr] = useState("");
 
   useEffect(() => {
     api(`/listings/${params.id}`).then(setItem);
@@ -15,11 +16,17 @@ export default function ListingDetails({ params }) {
 
   async function calculate() {
     if (!item || !toArea) return;
-    const data = await api("/delivery/calculate", {
-      method: "POST",
-      body: JSON.stringify({ from_area_id: item.area_id, to_area_id: toArea })
-    });
-    setFare(data);
+    setFareErr("");
+    setFare(null);
+    try {
+      const data = await api("/delivery/calculate", {
+        method: "POST",
+        body: JSON.stringify({ from_area_id: item.area_id, to_area_id: toArea })
+      });
+      setFare(data);
+    } catch (e) {
+      setFareErr(e.message || "Could not calculate fare right now.");
+    }
   }
 
   if (!item) return <p>Loading...</p>;
@@ -43,6 +50,7 @@ export default function ListingDetails({ params }) {
           {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
         <button className="mt-2 rounded bg-brand px-4 py-2 text-white" onClick={calculate}>Calculate Fare</button>
+        {fareErr ? <p className="mt-2 text-sm text-amber-700">{fareErr}</p> : null}
         {fare ? <p className="mt-2">Distance: {fare.distance_km} km | Fare: {Number(fare.fare_ugx).toLocaleString()} UGX</p> : null}
       </div>
     </div>
