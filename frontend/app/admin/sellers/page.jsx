@@ -7,6 +7,7 @@ export default function AdminSellersPage() {
   const router = useRouter();
   const [apps, setApps] = useState([]);
   const [err, setErr] = useState("");
+  const [statusDraft, setStatusDraft] = useState({});
   async function load() { setApps(await fetchWithAuth("/admin/seller-applications")); }
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -61,10 +62,24 @@ export default function AdminSellersPage() {
         <div key={a.id} className="rounded bg-white p-3 shadow">
           <p className="font-semibold">{a.business_name} - {a.applicant_name}</p>
           <p className="text-sm">{a.area_name} | {a.category_name || "No category"} | Status: {a.status}</p>
-          <div className="mt-2 flex gap-2">
-            <button className="rounded bg-green-700 px-3 py-1 text-white" onClick={() => update(a.id, "approved")}>Approve</button>
-            <button className="rounded bg-red-700 px-3 py-1 text-white" onClick={() => update(a.id, "rejected")}>Reject</button>
-            <button className="rounded bg-amber-600 px-3 py-1 text-white" onClick={() => update(a.id, "more_info")}>More info</button>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <select
+              className="rounded border p-2 text-sm"
+              value={statusDraft[a.id] || a.status}
+              onChange={(e) => setStatusDraft((prev) => ({ ...prev, [a.id]: e.target.value }))}
+            >
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="more_info">More info</option>
+              <option value="suspended">Suspended</option>
+            </select>
+            <button
+              className="rounded bg-brand px-3 py-2 text-sm text-white"
+              onClick={() => update(a.id, statusDraft[a.id] || a.status)}
+            >
+              Apply Status
+            </button>
           </div>
         </div>
       ))}
