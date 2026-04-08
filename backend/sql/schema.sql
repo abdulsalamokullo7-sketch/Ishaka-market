@@ -125,6 +125,9 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_messages_listing_created ON messages(listing_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_listing_thread ON messages(listing_id, sender_id, receiver_id);
+
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   buyer_id UUID NOT NULL REFERENCES users(id),

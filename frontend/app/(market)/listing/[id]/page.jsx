@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../../../lib/api";
 import CartQtyControls from "../../../../components/CartQtyControls";
+import ListingChat from "../../../../components/ListingChat";
 
 export default function ListingDetails({ params }) {
   const [item, setItem] = useState(null);
@@ -107,6 +108,10 @@ export default function ListingDetails({ params }) {
         {fareErr ? <p className="mt-2 text-sm text-amber-700">{fareErr}</p> : null}
         {fare ? <p className="mt-2">Distance: {fare.distance_km} km | Fare: {Number(fare.fare_ugx).toLocaleString()} UGX</p> : null}
       </div>
+
+      {item.seller_user_id ? (
+        <ListingChat listingId={item.id} sellerUserId={item.seller_user_id} sellerName={item.seller_name || "Seller"} />
+      ) : null}
     </div>
   );
 }

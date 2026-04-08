@@ -217,6 +217,110 @@ router.get("/listings/:id", async (req, res) => {
   return res.json(rows[0]);
 });
 
+const postMessageSchema = Joi.object({
+  listing_id: Joi.string().uuid().required(),
+  peer_user_id: Joi.string().uuid().required(),
+  body: Joi.string().trim().min(1).max(2000).required()
+});
+
+async function getListingSellerUserId(listingId) {
+  const { rows } = await pool.query(
+    `
+    SELECT s.user_id AS seller_user_id
+    FROM listings l
+    JOIN sellers s ON s.id = l.seller_id
+    WHERE l.id = $1 AND l.approved = TRUE AND s.status = 'approved'
+  `,
+    [listingId]
+  );
+  return rows[0]?.seller_user_id || null;
+}
+
+function isBuyerSellerPair(me, peer, sellerUserId) {
+  if (!me || !peer || me === peer) return false;
+  return (me === sellerUserId && peer !== sellerUserId) || (peer === sellerUserId && me !== sellerUserId);
+}
+
+router.get("/messages/partners", requireAuth, async (req, res) => {
+  const listing_id = req.query.listing_id;
+  if (!listing_id) return res.status(400).json({ message: "listing_id is required" });
+  const sellerUserId = await getListingSellerUserId(listing_id);
+  if (!sellerUserId) return res.status(404).json({ message: "Listing not found" });
+  if (sellerUserId !== req.user.id) {
+    return res.status(403).json({ message: "Only the seller can list buyers for this listing" });
+  }
+  const { rows } = await pool.query(
+    `
+    SELECT id, full_name FROM (
+      SELECT DISTINCT u.id, u.full_name
+      FROM messages m
+      JOIN users u ON u.id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END
+      WHERE m.listing_id = $2
+        AND (m.sender_id = $1 OR m.receiver_id = $1)
+    ) t
+    ORDER BY full_name ASC
+  `,
+    [req.user.id, listing_id]
+  );
+  return res.json(rows);
+});
+
+router.get("/messages", requireAuth, async (req, res) => {
+  const listing_id = req.query.listing_id;
+  const peer_user_id = req.query.peer_user_id;
+  if (!listing_id || !peer_user_id) {
+    return res.status(400).json({ message: "listing_id and peer_user_id are required" });
+  }
+  const sellerUserId = await getListingSellerUserId(listing_id);
+  if (!sellerUserId) return res.status(404).json({ message: "Listing not found" });
+  if (!isBuyerSellerPair(req.user.id, peer_user_id, sellerUserId)) {
+    return res.status(403).json({ message: "Invalid conversation" });
+  }
+  const { rows } = await pool.query(
+    `
+    SELECT m.id, m.sender_id, m.body, m.created_at, su.full_name AS sender_name
+    FROM messages m
+    JOIN users su ON su.id = m.sender_id
+    WHERE m.listing_id = $1
+      AND (
+        (m.sender_id = $2 AND m.receiver_id = $3)
+        OR (m.sender_id = $3 AND m.receiver_id = $2)
+      )
+    ORDER BY m.created_at ASC
+    LIMIT 300
+  `,
+    [listing_id, req.user.id, peer_user_id]
+  );
+  return res.json(rows);
+});
+
+router.post("/messages", requireAuth, validate(postMessageSchema), async (req, res) => {
+  const { listing_id, peer_user_id, body } = req.body;
+  const sellerUserId = await getListingSellerUserId(listing_id);
+  if (!sellerUserId) return res.status(404).json({ message: "Listing not found" });
+  if (!isBuyerSellerPair(req.user.id, peer_user_id, sellerUserId)) {
+    return res.status(403).json({ message: "Invalid conversation" });
+  }
+  const receiverId = req.user.id === sellerUserId ? peer_user_id : sellerUserId;
+  const senderId = req.user.id;
+  if (receiverId === senderId) {
+    return res.status(400).json({ message: "Cannot message yourself" });
+  }
+  const { rows } = await pool.query(
+    `
+    INSERT INTO messages (sender_id, receiver_id, listing_id, body)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, sender_id, receiver_id, listing_id, body, created_at
+  `,
+    [senderId, receiverId, listing_id, body]
+  );
+  const nameRes = await pool.query("SELECT full_name FROM users WHERE id = $1", [senderId]);
+  return res.status(201).json({
+    ...rows[0],
+    sender_name: nameRes.rows[0]?.full_name || ""
+  });
+});
+
 router.get("/sellers/:id/listings", async (req, res) => {
   const { page, limit, offset } = getPagination(req.query);
   const sellerQuery = `
