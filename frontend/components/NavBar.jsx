@@ -286,7 +286,7 @@ export default function NavBar() {
         </div>
       </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-red-600 bg-white/95 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-lg">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200/90 bg-white/95 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-lg">
         {/* Mobile: icon strip */}
         <div className="px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
