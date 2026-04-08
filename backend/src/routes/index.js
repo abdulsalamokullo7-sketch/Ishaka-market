@@ -223,6 +223,11 @@ const postMessageSchema = Joi.object({
   body: Joi.string().trim().min(1).max(2000).required()
 });
 
+function uuidNorm(v) {
+  if (v == null || v === "") return "";
+  return String(v).trim().toLowerCase();
+}
+
 async function getListingSellerUserId(listingId) {
   const { rows } = await pool.query(
     `
@@ -233,20 +238,67 @@ async function getListingSellerUserId(listingId) {
   `,
     [listingId]
   );
-  return rows[0]?.seller_user_id || null;
+  const raw = rows[0]?.seller_user_id;
+  return raw != null ? uuidNorm(raw) : null;
 }
 
 function isBuyerSellerPair(me, peer, sellerUserId) {
-  if (!me || !peer || me === peer) return false;
-  return (me === sellerUserId && peer !== sellerUserId) || (peer === sellerUserId && me !== sellerUserId);
+  const A = uuidNorm(me);
+  const B = uuidNorm(peer);
+  const S = uuidNorm(sellerUserId);
+  if (!A || !B || A === B) return false;
+  return (A === S && B !== S) || (B === S && A !== S);
 }
+
+function authUserId(req) {
+  const u = req.user;
+  if (!u) return "";
+  return uuidNorm(u.id ?? u.userId ?? u.sub);
+}
+
+router.get("/messages/inbox", requireAuth, async (req, res) => {
+  const me = authUserId(req);
+  if (!me) return res.status(401).json({ message: "Invalid token" });
+  const { rows } = await pool.query(
+    `
+    WITH ranked AS (
+      SELECT m.*,
+        CASE WHEN m.sender_id = $1::uuid THEN m.receiver_id ELSE m.sender_id END AS other_id,
+        ROW_NUMBER() OVER (
+          PARTITION BY m.listing_id,
+            CASE WHEN m.sender_id = $1::uuid THEN m.receiver_id ELSE m.sender_id END
+          ORDER BY m.created_at DESC
+        ) AS rn
+      FROM messages m
+      WHERE m.listing_id IS NOT NULL
+        AND (m.sender_id = $1::uuid OR m.receiver_id = $1::uuid)
+    )
+    SELECT r.listing_id::text AS listing_id,
+      r.other_id::text AS peer_user_id,
+      u.full_name AS peer_full_name,
+      l.title AS listing_title,
+      l.price AS listing_price,
+      COALESCE((l.image_urls)[1], '') AS listing_image,
+      r.body AS last_message_body,
+      r.created_at AS last_message_at
+    FROM ranked r
+    JOIN users u ON u.id = r.other_id
+    JOIN listings l ON l.id = r.listing_id
+    WHERE r.rn = 1
+    ORDER BY r.created_at DESC
+    LIMIT 100
+  `,
+    [me]
+  );
+  return res.json(rows);
+});
 
 router.get("/messages/partners", requireAuth, async (req, res) => {
   const listing_id = req.query.listing_id;
   if (!listing_id) return res.status(400).json({ message: "listing_id is required" });
   const sellerUserId = await getListingSellerUserId(listing_id);
   if (!sellerUserId) return res.status(404).json({ message: "Listing not found" });
-  if (sellerUserId !== req.user.id) {
+  if (sellerUserId !== authUserId(req)) {
     return res.status(403).json({ message: "Only the seller can list buyers for this listing" });
   }
   const { rows } = await pool.query(
@@ -260,7 +312,7 @@ router.get("/messages/partners", requireAuth, async (req, res) => {
     ) t
     ORDER BY full_name ASC
   `,
-    [req.user.id, listing_id]
+    [authUserId(req), listing_id]
   );
   return res.json(rows);
 });
@@ -273,7 +325,8 @@ router.get("/messages", requireAuth, async (req, res) => {
   }
   const sellerUserId = await getListingSellerUserId(listing_id);
   if (!sellerUserId) return res.status(404).json({ message: "Listing not found" });
-  if (!isBuyerSellerPair(req.user.id, peer_user_id, sellerUserId)) {
+  const me = authUserId(req);
+  if (!isBuyerSellerPair(me, peer_user_id, sellerUserId)) {
     return res.status(403).json({ message: "Invalid conversation" });
   }
   const { rows } = await pool.query(
@@ -283,13 +336,13 @@ router.get("/messages", requireAuth, async (req, res) => {
     JOIN users su ON su.id = m.sender_id
     WHERE m.listing_id = $1
       AND (
-        (m.sender_id = $2 AND m.receiver_id = $3)
-        OR (m.sender_id = $3 AND m.receiver_id = $2)
+        (m.sender_id = $2::uuid AND m.receiver_id = $3::uuid)
+        OR (m.sender_id = $3::uuid AND m.receiver_id = $2::uuid)
       )
     ORDER BY m.created_at ASC
     LIMIT 300
   `,
-    [listing_id, req.user.id, peer_user_id]
+    [listing_id, me, uuidNorm(peer_user_id)]
   );
   return res.json(rows);
 });
@@ -298,11 +351,12 @@ router.post("/messages", requireAuth, validate(postMessageSchema), async (req, r
   const { listing_id, peer_user_id, body } = req.body;
   const sellerUserId = await getListingSellerUserId(listing_id);
   if (!sellerUserId) return res.status(404).json({ message: "Listing not found" });
-  if (!isBuyerSellerPair(req.user.id, peer_user_id, sellerUserId)) {
+  const me = authUserId(req);
+  if (!isBuyerSellerPair(me, peer_user_id, sellerUserId)) {
     return res.status(403).json({ message: "Invalid conversation" });
   }
-  const receiverId = req.user.id === sellerUserId ? peer_user_id : sellerUserId;
-  const senderId = req.user.id;
+  const receiverId = me === sellerUserId ? uuidNorm(peer_user_id) : sellerUserId;
+  const senderId = me;
   if (receiverId === senderId) {
     return res.status(400).json({ message: "Cannot message yourself" });
   }

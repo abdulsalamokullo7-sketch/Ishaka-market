@@ -14,10 +14,10 @@ function NavLink({ href, children, active }) {
   return (
     <Link
       href={href}
-      className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+      className={`rounded-t-lg rounded-b-full border-t-[3px] px-3 py-2 text-sm font-medium transition-colors ${
         active
-          ? "bg-emerald-50 text-brand shadow-sm ring-1 ring-emerald-100"
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          ? "border-red-600 bg-red-50 text-red-900 shadow-sm ring-1 ring-red-100"
+          : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
       }`}
     >
       {children}
@@ -76,8 +76,10 @@ function BottomItem({ href, label, active, badge, icon }) {
   return (
     <Link
       href={href}
-      className={`flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 text-[10px] font-semibold leading-tight transition-colors sm:text-[11px] ${
-        active ? "bg-emerald-50 text-brand shadow-sm ring-1 ring-emerald-100/80" : "text-gray-600 hover:bg-gray-50"
+      className={`flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-b-2xl rounded-t-lg border-t-[3px] px-1 py-1.5 text-[10px] font-semibold leading-tight transition-colors sm:text-[11px] ${
+        active
+          ? "border-red-600 bg-red-50 text-red-900 shadow-sm ring-1 ring-red-100"
+          : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
       }`}
     >
       <BottomIcon name={icon} />
@@ -178,6 +180,7 @@ export default function NavBar() {
         Cart ({count})
       </NavLink>
       {logged ? <NavLink href="/orders" active={isActive("/orders")}>Orders</NavLink> : null}
+      {logged ? <NavLink href="/messages" active={isActive("/messages")}>Messages</NavLink> : null}
       {!logged || role === "user" ? (
         <NavLink href="/apply-seller" active={isActive("/apply-seller")}>
           Apply Seller
@@ -199,7 +202,7 @@ export default function NavBar() {
           </NavLink>
           <Link
             href="/register"
-            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition hover:bg-emerald-800"
+            className="rounded-t-lg rounded-b-full border-t-[3px] border-red-600 bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition hover:bg-emerald-800"
           >
             Register
           </Link>
@@ -207,7 +210,7 @@ export default function NavBar() {
       ) : logged ? (
         <button
           type="button"
-          className="rounded-full px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-red-50 hover:text-red-700"
+          className="rounded-t-lg rounded-b-full border-t-[3px] border-red-600/35 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-red-600/70 hover:bg-red-50/60 hover:text-red-800"
           onClick={logout}
         >
           Log out
@@ -243,7 +246,33 @@ export default function NavBar() {
         </div>
       </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-emerald-100/90 bg-white/95 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-lg">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-red-600 bg-white/95 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-lg">
+        {logged ? (
+          <div className="border-b border-red-100 px-3 pb-2 pt-2 md:hidden">
+            <div className="mx-auto flex max-w-lg justify-center gap-4 text-xs font-semibold">
+              <Link
+                href="/messages"
+                className={`rounded-t-md border-t-2 px-3 py-1 ${
+                  isActive("/messages")
+                    ? "border-red-600 bg-red-50 text-red-900"
+                    : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
+                }`}
+              >
+                Messages
+              </Link>
+              <Link
+                href="/notifications"
+                className={`rounded-t-md border-t-2 px-3 py-1 ${
+                  isActive("/notifications")
+                    ? "border-red-600 bg-red-50 text-red-900"
+                    : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
+                }`}
+              >
+                Alerts
+              </Link>
+            </div>
+          </div>
+        ) : null}
         {/* Mobile: icon strip */}
         <div className="px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
@@ -262,7 +291,7 @@ export default function NavBar() {
             {logged ? (
               <button
                 type="button"
-                className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 text-[10px] font-semibold leading-tight text-red-600 transition-colors hover:bg-red-50 sm:text-[11px]"
+                className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-b-2xl rounded-t-lg border-t-[3px] border-red-600/35 px-1 py-1.5 text-[10px] font-semibold leading-tight text-red-800 transition-colors hover:border-red-600/70 hover:bg-red-50/80 sm:text-[11px]"
                 onClick={logout}
               >
                 <svg className="h-5 w-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
