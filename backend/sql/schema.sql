@@ -134,6 +134,16 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Group multiple cart lines into one checkout (same timestamp batch).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_group_id UUID;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS qty INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS unit_price_ugx NUMERIC(14,2);
+
+UPDATE orders SET unit_price_ugx = amount_ugx WHERE unit_price_ugx IS NULL;
+UPDATE orders SET order_group_id = id WHERE order_group_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_created ON orders(buyer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_group ON orders(order_group_id);
+
 CREATE INDEX IF NOT EXISTS idx_listings_created_at ON listings(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price);
 CREATE INDEX IF NOT EXISTS idx_listings_available ON listings(is_available);

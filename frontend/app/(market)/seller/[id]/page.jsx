@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "../../../../lib/api";
-import { addToCart } from "../../../../utils/cart";
+import CartQtyControls from "../../../../components/CartQtyControls";
 
 export default function SellerPage({ params }) {
   const [data, setData] = useState(null);
@@ -24,13 +24,12 @@ export default function SellerPage({ params }) {
               <h3 className="font-semibold">{l.title}</h3>
               <p>{Number(l.price).toLocaleString()} UGX</p>
             </Link>
-            <button
-              type="button"
-              className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs text-white"
-              onClick={() => addToCart({ id: l.id, title: l.title, price: Number(l.price || 0), image: l.image_urls?.[0] || "" })}
-            >
-              Add to Cart
-            </button>
+            <div className="mt-2 flex justify-start">
+              <CartQtyControls
+                size="sm"
+                item={{ id: l.id, title: l.title, price: Number(l.price || 0), image: l.image_urls?.[0] || "" }}
+              />
+            </div>
           </article>
         ))}
       </div>

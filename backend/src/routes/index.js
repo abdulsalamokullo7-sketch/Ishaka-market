@@ -381,6 +381,127 @@ router.post("/delivery/calculate", validate(Joi.object({
   return res.json(rows[0]);
 });
 
+const checkoutSchema = Joi.object({
+  items: Joi.array()
+    .items(
+      Joi.object({
+        listing_id: Joi.string().uuid().required(),
+        qty: Joi.number().integer().min(1).max(99).required()
+      })
+    )
+    .min(1)
+    .max(50)
+    .required()
+});
+
+router.post("/orders/checkout", requireAuth, validate(checkoutSchema), async (req, res) => {
+  const merged = new Map();
+  for (const line of req.body.items) {
+    const prev = merged.get(line.listing_id) || 0;
+    merged.set(line.listing_id, prev + line.qty);
+  }
+  const lines = [...merged.entries()].map(([listing_id, qty]) => ({ listing_id, qty }));
+
+  const groupId = randomUUID();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    let total = 0;
+    for (const line of lines) {
+      const { rows } = await client.query(
+        `
+        SELECT l.id, l.price, l.is_available, s.status AS seller_status, s.user_id AS seller_user_id
+        FROM listings l
+        JOIN sellers s ON s.id = l.seller_id
+        WHERE l.id = $1 AND l.approved = TRUE
+      `,
+        [line.listing_id]
+      );
+      const row = rows[0];
+      if (!row) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "One or more products are no longer available." });
+      }
+      if (!row.is_available || row.seller_status !== "approved") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "One or more products are no longer available." });
+      }
+      if (row.seller_user_id === req.user.id) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "You cannot order your own listing." });
+      }
+      const unit = Number(row.price);
+      const lineTotal = unit * line.qty;
+      total += lineTotal;
+      await client.query(
+        `
+        INSERT INTO orders (buyer_id, listing_id, amount_ugx, status, order_group_id, qty, unit_price_ugx)
+        VALUES ($1, $2, $3, 'pending', $4, $5, $6)
+      `,
+        [req.user.id, line.listing_id, lineTotal, groupId, line.qty, unit]
+      );
+    }
+    await client.query("COMMIT");
+    return res.status(201).json({ order_group_id: groupId, total_ugx: total, line_count: lines.length });
+  } catch {
+    await client.query("ROLLBACK");
+    return res.status(500).json({ message: "Could not place order." });
+  } finally {
+    client.release();
+  }
+});
+
+router.get("/orders/me", requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `
+    SELECT order_group_id,
+      COUNT(*)::int AS line_count,
+      SUM(amount_ugx)::numeric AS total_ugx,
+      MIN(created_at) AS created_at,
+      MIN(status) AS status
+    FROM orders
+    WHERE buyer_id = $1
+    GROUP BY order_group_id
+    ORDER BY MIN(created_at) DESC
+    LIMIT 100
+  `,
+    [req.user.id]
+  );
+  return res.json(rows);
+});
+
+router.get("/orders/:groupId", requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `
+    SELECT o.id, o.listing_id, o.qty, o.unit_price_ugx, o.amount_ugx, o.status, o.created_at,
+      l.title, l.image_urls
+    FROM orders o
+    JOIN listings l ON l.id = o.listing_id
+    WHERE o.order_group_id = $1 AND o.buyer_id = $2
+    ORDER BY o.created_at ASC
+  `,
+    [req.params.groupId, req.user.id]
+  );
+  if (!rows.length) return res.status(404).json({ message: "Order not found" });
+  const head = rows[0];
+  const total = rows.reduce((s, r) => s + Number(r.amount_ugx), 0);
+  return res.json({
+    order_group_id: req.params.groupId,
+    created_at: head.created_at,
+    status: head.status,
+    lines: rows.map((r) => ({
+      id: r.id,
+      listing_id: r.listing_id,
+      title: r.title,
+      qty: r.qty,
+      unit_price_ugx: r.unit_price_ugx,
+      amount_ugx: r.amount_ugx,
+      image_urls: r.image_urls
+    })),
+    total_ugx: total
+  });
+});
+
 router.get("/admin/seller-applications", requireAuth, requireRole("admin"), async (req, res) => {
   const { rows } = await pool.query(`
     SELECT sa.*, u.full_name AS applicant_name, a.name AS area_name, c.name AS category_name

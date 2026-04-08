@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "../lib/api";
-import { addToCart } from "../utils/cart";
+import CartQtyControls from "../components/CartQtyControls";
 
 const HOME_CACHE_KEY = "home-cache-v1";
 
@@ -99,13 +99,12 @@ export default function HomePage() {
               </div>
               <p className="mt-1 text-sm font-bold text-brand sm:text-base">{Number(l.price).toLocaleString()} UGX</p>
             </Link>
-            <button
-              type="button"
-              className="mt-2 w-full rounded-full bg-brand px-3 py-2 text-xs font-semibold text-white sm:text-sm"
-              onClick={() => addToCart({ id: l.id, title: l.title, price: Number(l.price || 0), image: l.image_urls?.[0] || "" })}
-            >
-              Add to Cart
-            </button>
+            <div className="mt-2 flex justify-center">
+              <CartQtyControls
+                size="sm"
+                item={{ id: l.id, title: l.title, price: Number(l.price || 0), image: l.image_urls?.[0] || "" }}
+              />
+            </div>
           </article>
         ))}
       </section>

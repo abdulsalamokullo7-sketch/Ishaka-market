@@ -91,6 +91,7 @@ export default function NavBar() {
     <>
       <Link href="/post-listing" className="rounded-full px-3 py-2 hover:bg-gray-100">Post</Link>
       <Link href="/cart" className="rounded-full px-3 py-2 hover:bg-gray-100">Cart ({count})</Link>
+      {logged ? <Link href="/orders" className="rounded-full px-3 py-2 hover:bg-gray-100">Orders</Link> : null}
       {!logged || role === "user" ? <Link href="/apply-seller" className="rounded-full px-3 py-2 hover:bg-gray-100">Apply Seller</Link> : null}
       {logged && role === "seller" ? <Link href="/seller-account" className="rounded-full px-3 py-2 hover:bg-gray-100">My Account</Link> : null}
       <Link href="/admin" className="rounded-full px-3 py-2 hover:bg-gray-100">Admin</Link>
