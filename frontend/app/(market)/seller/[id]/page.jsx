@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "../../../../lib/api";
+import { addToCart } from "../../../../utils/cart";
 
 export default function SellerPage({ params }) {
   const [data, setData] = useState(null);
@@ -18,10 +19,19 @@ export default function SellerPage({ params }) {
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {data.data.map((l) => (
-          <Link key={l.id} href={`/listing/${l.id}`} className="rounded bg-white p-3 shadow">
-            <h3 className="font-semibold">{l.title}</h3>
-            <p>{Number(l.price).toLocaleString()} UGX</p>
-          </Link>
+          <article key={l.id} className="rounded bg-white p-3 shadow">
+            <Link href={`/listing/${l.id}`} className="block">
+              <h3 className="font-semibold">{l.title}</h3>
+              <p>{Number(l.price).toLocaleString()} UGX</p>
+            </Link>
+            <button
+              type="button"
+              className="mt-2 rounded-full bg-brand px-3 py-1.5 text-xs text-white"
+              onClick={() => addToCart({ id: l.id, title: l.title, price: Number(l.price || 0), image: l.image_urls?.[0] || "" })}
+            >
+              Add to Cart
+            </button>
+          </article>
         ))}
       </div>
     </div>

@@ -166,16 +166,16 @@ export default function PostListingPage() {
       <input className="w-full rounded border p-2" placeholder="Title" onChange={(e) => setForm({ ...form, title: e.target.value })} />
       <textarea className="w-full rounded border p-2" placeholder="Description" onChange={(e) => setForm({ ...form, description: e.target.value })} />
       <input className="w-full rounded border p-2" type="number" placeholder="Price (UGX)" onChange={(e) => setForm({ ...form, price: e.target.value })} />
-      <select className="w-full rounded border p-2" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
+      <select className="w-full rounded border bg-white p-2 text-base" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
         <option value="new">Condition: New</option>
         <option value="used">Condition: Used</option>
         <option value="refurbished">Condition: Refurbished</option>
       </select>
-      <select className="w-full rounded border p-2" onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
+      <select className="w-full rounded border bg-white p-2 text-base" onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
         <option value="">Select category</option>
         {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
-      <select className="w-full rounded border p-2" onChange={(e) => setForm({ ...form, area_id: e.target.value })}>
+      <select className="w-full rounded border bg-white p-2 text-base" onChange={(e) => setForm({ ...form, area_id: e.target.value })}>
         <option value="">Select area</option>
         {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
       </select>

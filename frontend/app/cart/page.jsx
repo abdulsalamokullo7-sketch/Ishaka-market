@@ -42,7 +42,7 @@ export default function CartPage() {
                     <p className="text-sm text-gray-600">{Number(x.price).toLocaleString()} UGX</p>
                   </div>
                   <select
-                    className="rounded border p-1 text-sm"
+                    className="rounded border bg-white p-1 text-base sm:text-sm"
                     value={x.qty}
                     onChange={(e) => setCartQty(x.id, Number(e.target.value))}
                   >
