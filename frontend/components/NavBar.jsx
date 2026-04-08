@@ -13,21 +13,46 @@ export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
   const [logged, setLogged] = useState(null);
+  const [role, setRole] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     setLogged(readToken());
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+      setRole(raw ? JSON.parse(raw)?.role || "" : "");
+    } catch {
+      setRole("");
+    }
     setMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
     if (readToken()) {
-      syncAuthSession().catch(() => null);
+      syncAuthSession()
+        .then((u) => setRole(u?.role || ""))
+        .catch(() => null);
     }
     const onStorage = (e) => {
-      if (e.key === "token" || e.key === null) setLogged(readToken());
+      if (e.key === "token" || e.key === "user" || e.key === null) {
+        setLogged(readToken());
+        try {
+          const raw = localStorage.getItem("user");
+          setRole(raw ? JSON.parse(raw)?.role || "" : "");
+        } catch {
+          setRole("");
+        }
+      }
     };
-    const onAuth = () => setLogged(readToken());
+    const onAuth = () => {
+      setLogged(readToken());
+      try {
+        const raw = localStorage.getItem("user");
+        setRole(raw ? JSON.parse(raw)?.role || "" : "");
+      } catch {
+        setRole("");
+      }
+    };
     window.addEventListener("storage", onStorage);
     window.addEventListener("auth-change", onAuth);
     return () => {
@@ -40,6 +65,7 @@ export default function NavBar() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setLogged(false);
+    setRole("");
     window.dispatchEvent(new Event("auth-change"));
     router.push("/");
     router.refresh();
@@ -48,8 +74,8 @@ export default function NavBar() {
   const navLinks = (
     <>
       <Link href="/post-listing" className="rounded-full px-3 py-2 hover:bg-gray-100">Post</Link>
-      <Link href="/apply-seller" className="rounded-full px-3 py-2 hover:bg-gray-100">Apply Seller</Link>
-      {logged ? <Link href="/seller-account" className="rounded-full px-3 py-2 hover:bg-gray-100">My Account</Link> : null}
+      {!logged || role === "user" ? <Link href="/apply-seller" className="rounded-full px-3 py-2 hover:bg-gray-100">Apply Seller</Link> : null}
+      {logged && role === "seller" ? <Link href="/seller-account" className="rounded-full px-3 py-2 hover:bg-gray-100">My Account</Link> : null}
       <Link href="/admin" className="rounded-full px-3 py-2 hover:bg-gray-100">Admin</Link>
       {logged ? <Link href="/notifications" className="rounded-full px-3 py-2 hover:bg-gray-100">Notifications</Link> : null}
       {logged === false ? (
