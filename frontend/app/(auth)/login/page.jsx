@@ -1,26 +1,24 @@
 "use client";
-import { useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { useEffect } from "react";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ phone: "", password: "" });
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [authHint, setAuthHint] = useState("");
+  const [returnTo, setReturnTo] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("reason")) setAuthHint("Please log in to continue.");
+      setReturnTo(params.get("returnTo") || "");
+    }
   }, []);
-
-  const authHint = useMemo(() => {
-    if (!mounted) return "";
-    const reason = searchParams.get("reason");
-    if (!reason) return "";
-    return "Please log in to continue.";
-  }, [mounted, searchParams]);
 
   async function submit(e) {
     e.preventDefault();
@@ -29,7 +27,6 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("auth-change"));
-      const returnTo = searchParams.get("returnTo");
       router.push(returnTo || "/");
     } catch (err) {
       setError(err.message);
