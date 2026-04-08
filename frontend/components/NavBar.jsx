@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { syncAuthSession } from "../utils/api";
 
 function readToken() {
   if (typeof window === "undefined") return false;
@@ -11,13 +12,16 @@ function readToken() {
 export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [logged, setLogged] = useState(false);
+  const [logged, setLogged] = useState(null);
 
   useEffect(() => {
     setLogged(readToken());
   }, [pathname]);
 
   useEffect(() => {
+    if (readToken()) {
+      syncAuthSession().catch(() => null);
+    }
     const onStorage = (e) => {
       if (e.key === "token" || e.key === null) setLogged(readToken());
     };
@@ -48,16 +52,16 @@ export default function NavBar() {
           <Link href="/apply-seller">Apply Seller</Link>
           <Link href="/admin">Admin</Link>
           {logged ? <Link href="/notifications">Notifications</Link> : null}
-          {!logged ? (
+          {logged === false ? (
             <>
               <Link href="/login">Login</Link>
               <Link href="/register">Register</Link>
             </>
-          ) : (
+          ) : logged ? (
             <button type="button" className="text-brand underline" onClick={logout}>
               Log out
             </button>
-          )}
+          ) : null}
         </nav>
       </div>
     </header>
