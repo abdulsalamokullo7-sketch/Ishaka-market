@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
       <body>
         <NavBar />
         <BackButton />
-        <main className="container-x py-4 pb-24 md:pb-4">{children}</main>
+        <main className="container-x py-4 pb-28 md:pb-32">{children}</main>
       </body>
     </html>
   );
