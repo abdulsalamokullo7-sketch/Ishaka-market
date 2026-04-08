@@ -62,3 +62,19 @@ export async function fetchWithAuth(endpoint, options = {}) {
 
   return data;
 }
+
+export async function syncAuthSession() {
+  if (typeof window === "undefined") return null;
+  try {
+    const data = await fetchWithAuth("/auth/me");
+    if (data?.token && data?.user) {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.dispatchEvent(new Event("auth-change"));
+      return data.user;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

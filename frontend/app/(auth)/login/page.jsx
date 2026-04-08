@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
@@ -38,11 +39,6 @@ export default function LoginPage() {
     }
   }
 
-  function fillAdminCredentials() {
-    setError("");
-    setForm({ phone: "+256700000001", password: "Admin@123" });
-  }
-
   return (
     <form onSubmit={submit} className="mx-auto max-w-md space-y-3 rounded bg-white p-4 shadow">
       <h1 className="text-xl font-bold">Login</h1>
@@ -51,14 +47,10 @@ export default function LoginPage() {
       <input className="w-full rounded border p-2" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
       <div className="rounded border bg-gray-50 p-2 text-xs text-gray-700">
         <p className="mb-2 font-medium">Admin sign in</p>
-        <p>If you seeded the database, use the admin account credentials.</p>
-        <button
-          type="button"
-          onClick={fillAdminCredentials}
-          className="mt-2 rounded border px-2 py-1 text-xs text-brand"
-        >
-          Use admin credentials
-        </button>
+        <p>Use the same login form with your admin account credentials.</p>
+        <Link href="/admin" className="mt-2 inline-block rounded border px-2 py-1 text-xs text-brand">
+          Open admin login
+        </Link>
       </div>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <button className="w-full rounded bg-brand py-2 text-white">Login</button>

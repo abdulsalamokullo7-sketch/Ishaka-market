@@ -56,6 +56,16 @@ router.post("/auth/login", validate(loginSchema), async (req, res) => {
   });
 });
 
+router.get("/auth/me", requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    "SELECT id, full_name, phone, role, area_id FROM users WHERE id=$1 AND is_active=TRUE",
+    [req.user.id]
+  );
+  if (!rows[0]) return res.status(404).json({ message: "User not found" });
+  const token = signToken({ id: rows[0].id, role: rows[0].role });
+  return res.json({ token, user: rows[0] });
+});
+
 router.get("/areas", async (_, res) => {
   const { rows } = await pool.query("SELECT * FROM areas ORDER BY name ASC");
   return res.json(rows);
@@ -210,6 +220,60 @@ router.get("/seller/me", requireAuth, async (req, res) => {
   return res.json(rows[0] || null);
 });
 
+router.get("/notifications", requireAuth, async (req, res) => {
+  const notices = [];
+
+  const appUpdates = await pool.query(`
+    SELECT id, status, admin_note, reviewed_at, created_at
+    FROM seller_applications
+    WHERE user_id=$1
+    ORDER BY COALESCE(reviewed_at, created_at) DESC
+    LIMIT 20
+  `, [req.user.id]);
+
+  appUpdates.rows.forEach((r) => {
+    if (r.status === "pending") {
+      notices.push({
+        id: `seller-app-pending-${r.id}`,
+        type: "seller_application",
+        title: "Seller application pending",
+        message: "Your seller application is still under review.",
+        created_at: r.created_at
+      });
+      return;
+    }
+    const titleMap = {
+      approved: "Seller application approved",
+      rejected: "Seller application rejected",
+      more_info: "Seller application needs more info",
+      suspended: "Seller account suspended"
+    };
+    notices.push({
+      id: `seller-app-${r.status}-${r.id}`,
+      type: "seller_application",
+      title: titleMap[r.status] || "Seller application update",
+      message: r.admin_note || `Status changed to ${r.status}.`,
+      created_at: r.reviewed_at || r.created_at
+    });
+  });
+
+  if (req.user.role === "admin") {
+    const pending = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM seller_applications WHERE status='pending'"
+    );
+    notices.push({
+      id: "admin-pending-apps",
+      type: "admin",
+      title: "Pending seller applications",
+      message: `You have ${pending.rows[0].total} pending seller application(s).`,
+      created_at: new Date().toISOString()
+    });
+  }
+
+  notices.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return res.json(notices.slice(0, 30));
+});
+
 router.post("/seller/listings", requireAuth, requireRole("seller"), validate(Joi.object({
   title: Joi.string().max(180).required(),
   description: Joi.string().max(4000).required(),
@@ -334,6 +398,16 @@ router.get("/admin/analytics", requireAuth, requireRole("admin"), async (_, res)
   `;
   const { rows } = await pool.query(query);
   return res.json(rows[0]);
+});
+
+router.get("/admin/users", requireAuth, requireRole("admin"), async (_, res) => {
+  const { rows } = await pool.query(`
+    SELECT u.id, u.full_name, u.phone, u.role, u.is_active, u.created_at, a.name AS area_name
+    FROM users u
+    LEFT JOIN areas a ON a.id = u.area_id
+    ORDER BY u.created_at DESC
+  `);
+  return res.json(rows);
 });
 
 module.exports = router;

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
-import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl, syncAuthSession } from "../../../utils/api";
 
 export default function PostListingPage() {
   const router = useRouter();
@@ -21,6 +21,7 @@ export default function PostListingPage() {
       router.push(loginRedirectUrl());
       return;
     }
+    syncAuthSession();
     Promise.all([api("/categories"), api("/areas")])
       .then(([c, a]) => {
         setCategories(c);
@@ -65,6 +66,18 @@ export default function PostListingPage() {
         clearAuth();
         router.push(loginRedirectUrl());
         return;
+      }
+      if (/forbidden|seller not approved/i.test(msg2)) {
+        const refreshed = await syncAuthSession();
+        if (refreshed?.role === "seller") {
+          try {
+            await fetchWithAuth("/seller/listings", { method: "POST", body: JSON.stringify(payload) });
+            setMsg("Listing created successfully.");
+            return;
+          } catch {
+            // Fall through to user-facing seller approval hint.
+          }
+        }
       }
       setErr(msg2);
     }

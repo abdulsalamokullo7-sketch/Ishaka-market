@@ -47,6 +47,7 @@ export default function NavBar() {
           <Link href="/post-listing">Post</Link>
           <Link href="/apply-seller">Apply Seller</Link>
           <Link href="/admin">Admin</Link>
+          {logged ? <Link href="/notifications">Notifications</Link> : null}
           {!logged ? (
             <>
               <Link href="/login">Login</Link>
