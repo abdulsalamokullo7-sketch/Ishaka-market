@@ -2,17 +2,25 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "../../../lib/api";
+import { useEffect } from "react";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ phone: "", password: "" });
   const [error, setError] = useState("");
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const authHint = useMemo(() => {
+    if (!mounted) return "";
     const reason = searchParams.get("reason");
     if (!reason) return "";
     return "Please log in to continue.";
-  }, [searchParams]);
+  }, [mounted, searchParams]);
 
   async function submit(e) {
     e.preventDefault();

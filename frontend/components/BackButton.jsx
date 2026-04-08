@@ -1,10 +1,17 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function BackButton() {
   const router = useRouter();
   const pathname = usePathname();
-  if (!pathname || pathname === "/") return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !pathname || pathname === "/") return null;
 
   function onBack() {
     if (typeof window !== "undefined" && window.history.length > 1) {

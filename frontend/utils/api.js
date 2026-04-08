@@ -8,7 +8,7 @@ export function clearAuth() {
 }
 
 export function isAuthErrorMessage(msg = "") {
-  return /missing token|invalid token|forbidden|unauthorized/i.test(msg);
+  return /missing token|invalid token|unauthorized/i.test(msg);
 }
 
 export function loginRedirectUrl() {
