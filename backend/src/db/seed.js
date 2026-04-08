@@ -29,13 +29,24 @@ async function run() {
   }
 
   const area = await pool.query("SELECT id FROM areas WHERE name='Town Center' LIMIT 1");
-  const adminPass = await bcrypt.hash("Admin@123", 10);
-  await pool.query(
-    `INSERT INTO users (full_name, phone, password_hash, role, area_id)
-     VALUES ('System Admin', '+256700000001', $1, 'admin', $2)
-     ON CONFLICT (phone) DO NOTHING`,
-    [adminPass, area.rows[0].id]
-  );
+  const adminPhone = "0787878787";
+  const adminPlain = "Admin2025";
+  const adminPass = await bcrypt.hash(adminPlain, 10);
+  const adminExists = await pool.query("SELECT id FROM users WHERE role='admin' LIMIT 1");
+  if (adminExists.rows[0]) {
+    await pool.query(
+      `UPDATE users
+       SET full_name='System Admin', phone=$1, password_hash=$2, area_id=$3, is_active=TRUE
+       WHERE id=$4`,
+      [adminPhone, adminPass, area.rows[0].id, adminExists.rows[0].id]
+    );
+  } else {
+    await pool.query(
+      `INSERT INTO users (full_name, phone, password_hash, role, area_id)
+       VALUES ('System Admin', $1, $2, 'admin', $3)`,
+      [adminPhone, adminPass, area.rows[0].id]
+    );
+  }
 
   const userPass = await bcrypt.hash("Seller@123", 10);
   await pool.query(
@@ -46,7 +57,7 @@ async function run() {
   );
 
   // eslint-disable-next-line no-console
-  console.log("Seed completed. Admin: +256700000001 / Admin@123");
+  console.log(`Seed completed. Admin: ${adminPhone} / ${adminPlain}`);
   await pool.end();
 }
 

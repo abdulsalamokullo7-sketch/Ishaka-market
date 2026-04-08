@@ -13,9 +13,26 @@ CREATE TABLE IF NOT EXISTS categories (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TYPE user_role AS ENUM ('admin', 'seller', 'user');
-CREATE TYPE seller_status AS ENUM ('pending', 'approved', 'rejected', 'suspended', 'more_info');
-CREATE TYPE verification_badge AS ENUM ('new', 'verified', 'suspended');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+    CREATE TYPE user_role AS ENUM ('admin', 'seller', 'user');
+  END IF;
+END$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'seller_status') THEN
+    CREATE TYPE seller_status AS ENUM ('pending', 'approved', 'rejected', 'suspended', 'more_info');
+  END IF;
+END$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'verification_badge') THEN
+    CREATE TYPE verification_badge AS ENUM ('new', 'verified', 'suspended');
+  END IF;
+END$$;
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
