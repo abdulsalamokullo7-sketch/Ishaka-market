@@ -5,7 +5,7 @@ import { addToCart, decrementFromCart, getCartQty } from "../utils/cart";
 /**
  * +/- stepper for a product line. Syncs with localStorage cart and cart-change events.
  */
-export default function CartQtyControls({ item, size = "default" }) {
+export default function CartQtyControls({ item, size = "default", disabled = false }) {
   const [qty, setQty] = useState(0);
 
   useEffect(() => {
@@ -24,6 +24,16 @@ export default function CartQtyControls({ item, size = "default" }) {
   const isSm = size === "sm";
   const btn = isSm ? "h-8 min-w-[2rem] text-base" : "h-10 min-w-[2.5rem] text-lg";
   const pad = isSm ? "p-0.5" : "p-1";
+
+  if (disabled) {
+    return (
+      <span
+        className={`inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 ${isSm ? "py-1 text-[10px]" : "text-sm"}`}
+      >
+        Sold
+      </span>
+    );
+  }
 
   function plus(e) {
     e.preventDefault();

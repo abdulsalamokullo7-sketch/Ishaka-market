@@ -33,6 +33,7 @@ export default function ListingDetails({ params }) {
   }
 
   if (!item) return <p>Loading...</p>;
+  const sold = item.is_available === false;
   const images = Array.isArray(item.image_urls) && item.image_urls.length ? item.image_urls : [];
   const whatsapp = item.whatsapp_number || item.seller_phone;
   const cartItem = {
@@ -43,6 +44,11 @@ export default function ListingDetails({ params }) {
   };
   return (
     <div className="space-y-4">
+      {sold ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-900">
+          This listing is marked as sold — it no longer appears in search or the storefront.
+        </div>
+      ) : null}
       <div className="space-y-2">
         <div className="relative overflow-hidden rounded-2xl bg-white shadow-sm">
           <div
@@ -95,16 +101,18 @@ export default function ListingDetails({ params }) {
       <div className="flex flex-wrap items-center gap-2">
         <a className="rounded bg-green-600 px-4 py-2 text-white" href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`} target="_blank">WhatsApp</a>
         <a className="rounded bg-gray-800 px-4 py-2 text-white" href={`tel:${item.seller_phone}`}>Call</a>
-        <CartQtyControls item={cartItem} />
+        <CartQtyControls item={cartItem} disabled={sold} />
       </div>
 
-      <div className="rounded-xl bg-white p-3 shadow-sm">
+      <div className={`rounded-xl bg-white p-3 shadow-sm ${sold ? "opacity-60" : ""}`}>
         <h2 className="font-semibold">Request Delivery</h2>
-        <select className="mt-2 w-full rounded border p-2" value={toArea} onChange={(e) => setToArea(e.target.value)}>
+        <select className="mt-2 w-full rounded border p-2" value={toArea} disabled={sold} onChange={(e) => setToArea(e.target.value)}>
           <option value="">Select your area</option>
           {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <button className="mt-2 rounded bg-brand px-4 py-2 text-white" onClick={calculate}>Calculate Fare</button>
+        <button type="button" className="mt-2 rounded bg-brand px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={calculate} disabled={sold}>
+          Calculate Fare
+        </button>
         {fareErr ? <p className="mt-2 text-sm text-amber-700">{fareErr}</p> : null}
         {fare ? <p className="mt-2">Distance: {fare.distance_km} km | Fare: {Number(fare.fare_ugx).toLocaleString()} UGX</p> : null}
       </div>

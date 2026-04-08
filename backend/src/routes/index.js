@@ -170,6 +170,7 @@ router.get("/listings", async (req, res) => {
     vals.push(req.query.max_price);
   }
   if (req.query.verified === "true") where.push("s.is_verified = TRUE");
+  where.push("l.is_available = TRUE");
 
   const countQuery = `
     SELECT COUNT(*)::int AS total
@@ -389,7 +390,7 @@ router.get("/sellers/:id/listings", async (req, res) => {
     FROM listings l
     JOIN categories c ON c.id=l.category_id
     JOIN areas a ON a.id=l.area_id
-    WHERE l.seller_id=$1 AND l.approved=TRUE
+    WHERE l.seller_id=$1 AND l.approved=TRUE AND l.is_available=TRUE
     ORDER BY l.created_at DESC LIMIT $2 OFFSET $3
   `;
   const data = await pool.query(listQuery, [req.params.id, limit, offset]);
@@ -522,6 +523,27 @@ router.delete("/seller/listings/:id", requireAuth, requireRole("seller"), async 
   if (!del.rows[0]) return res.status(404).json({ message: "Listing not found" });
   return res.json({ ok: true });
 });
+
+router.patch(
+  "/seller/listings/:id",
+  requireAuth,
+  requireRole("seller"),
+  validate(
+    Joi.object({
+      is_available: Joi.boolean().required()
+    })
+  ),
+  async (req, res) => {
+    const seller = await pool.query("SELECT id FROM sellers WHERE user_id=$1 AND status='approved' LIMIT 1", [req.user.id]);
+    if (!seller.rows[0]) return res.status(403).json({ message: "Seller not approved" });
+    const { rows } = await pool.query(
+      `UPDATE listings SET is_available = $1, updated_at = NOW() WHERE id = $2 AND seller_id = $3 RETURNING *`,
+      [req.body.is_available, req.params.id, seller.rows[0].id]
+    );
+    if (!rows[0]) return res.status(404).json({ message: "Listing not found" });
+    return res.json(rows[0]);
+  }
+);
 
 router.post("/delivery/calculate", validate(Joi.object({
   from_area_id: Joi.string().uuid().required(),
