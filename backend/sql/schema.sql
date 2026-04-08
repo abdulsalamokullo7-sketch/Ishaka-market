@@ -34,6 +34,13 @@ BEGIN
   END IF;
 END$$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'listing_condition') THEN
+    CREATE TYPE listing_condition AS ENUM ('new', 'used', 'refurbished');
+  END IF;
+END$$;
+
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name VARCHAR(160) NOT NULL,
@@ -85,6 +92,7 @@ CREATE TABLE IF NOT EXISTS listings (
   description TEXT NOT NULL,
   price NUMERIC(14,2) NOT NULL CHECK (price >= 0),
   currency VARCHAR(10) NOT NULL DEFAULT 'UGX',
+  condition listing_condition NOT NULL DEFAULT 'used',
   image_urls TEXT[] NOT NULL DEFAULT '{}',
   is_available BOOLEAN NOT NULL DEFAULT TRUE,
   is_featured BOOLEAN NOT NULL DEFAULT FALSE,
@@ -93,6 +101,9 @@ CREATE TABLE IF NOT EXISTS listings (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE listings
+ADD COLUMN IF NOT EXISTS condition listing_condition NOT NULL DEFAULT 'used';
 
 CREATE TABLE IF NOT EXISTS delivery_fares (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

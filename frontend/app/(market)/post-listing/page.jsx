@@ -12,7 +12,7 @@ export default function PostListingPage() {
   const [categories, setCategories] = useState([]);
   const [areas, setAreas] = useState([]);
   const [form, setForm] = useState({
-    title: "", description: "", price: "", category_id: "", area_id: ""
+    title: "", description: "", price: "", condition: "used", category_id: "", area_id: ""
   });
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -121,6 +121,7 @@ export default function PostListingPage() {
       title: form.title.trim(),
       description: form.description.trim(),
       price,
+      condition: form.condition,
       category_id: form.category_id,
       area_id: form.area_id,
       image_urls,
@@ -165,6 +166,11 @@ export default function PostListingPage() {
       <input className="w-full rounded border p-2" placeholder="Title" onChange={(e) => setForm({ ...form, title: e.target.value })} />
       <textarea className="w-full rounded border p-2" placeholder="Description" onChange={(e) => setForm({ ...form, description: e.target.value })} />
       <input className="w-full rounded border p-2" type="number" placeholder="Price (UGX)" onChange={(e) => setForm({ ...form, price: e.target.value })} />
+      <select className="w-full rounded border p-2" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
+        <option value="new">Condition: New</option>
+        <option value="used">Condition: Used</option>
+        <option value="refurbished">Condition: Refurbished</option>
+      </select>
       <select className="w-full rounded border p-2" onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
         <option value="">Select category</option>
         {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

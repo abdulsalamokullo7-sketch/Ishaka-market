@@ -324,6 +324,7 @@ router.post("/seller/listings", requireAuth, requireRole("seller"), validate(Joi
   title: Joi.string().max(180).required(),
   description: Joi.string().max(4000).required(),
   price: Joi.number().min(0).required(),
+  condition: Joi.string().valid("new", "used", "refurbished").required(),
   category_id: Joi.string().uuid().required(),
   area_id: Joi.string().uuid().required(),
   image_urls: Joi.array().items(Joi.string().uri()).min(1).max(5).required(),
@@ -332,12 +333,12 @@ router.post("/seller/listings", requireAuth, requireRole("seller"), validate(Joi
   const seller = await pool.query("SELECT * FROM sellers WHERE user_id=$1 AND status='approved'", [req.user.id]);
   if (!seller.rows[0]) return res.status(403).json({ message: "Seller not approved" });
   const q = `
-    INSERT INTO listings (seller_id, title, description, price, category_id, area_id, image_urls, requires_approval, approved)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    INSERT INTO listings (seller_id, title, description, price, condition, category_id, area_id, image_urls, requires_approval, approved)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     RETURNING *
   `;
   const approved = !req.body.requires_approval;
-  const vals = [seller.rows[0].id, req.body.title, req.body.description, req.body.price, req.body.category_id, req.body.area_id, req.body.image_urls, req.body.requires_approval, approved];
+  const vals = [seller.rows[0].id, req.body.title, req.body.description, req.body.price, req.body.condition, req.body.category_id, req.body.area_id, req.body.image_urls, req.body.requires_approval, approved];
   const { rows } = await pool.query(q, vals);
   return res.status(201).json(rows[0]);
 });

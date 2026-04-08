@@ -64,19 +64,22 @@ export default function HomePage() {
         <button className="mt-2 rounded-full bg-brand px-4 py-2 text-white" onClick={load}>Search</button>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {loading && listings.length === 0 ? (
           <p className="text-sm text-gray-500">Loading products...</p>
         ) : null}
         {listings.map((l) => (
-          <Link key={l.id} href={`/listing/${l.id}`} className="rounded-2xl bg-white p-3 shadow-sm transition hover:shadow">
+          <Link key={l.id} href={`/listing/${l.id}`} className="rounded-2xl bg-white p-2.5 shadow-sm transition hover:shadow">
             <div className="grid grid-cols-2 gap-2">
               <img src={l.image_urls?.[0]} alt={l.title} loading="lazy" className="h-32 w-full rounded-xl object-cover" />
               <img src={l.image_urls?.[1] || l.image_urls?.[0]} alt={`${l.title} preview`} loading="lazy" className="h-32 w-full rounded-xl object-cover" />
             </div>
-            <h3 className="mt-2 font-semibold">{l.title}</h3>
-            <p className="text-sm text-gray-600">{l.area_name}</p>
-            <p className="font-bold text-brand">{Number(l.price).toLocaleString()} UGX</p>
+            <h3 className="mt-2 line-clamp-1 text-sm font-semibold sm:text-base">{l.title}</h3>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <p className="line-clamp-1 text-xs text-gray-600 sm:text-sm">{l.area_name}</p>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-700 sm:text-xs">{l.condition || "used"}</span>
+            </div>
+            <p className="mt-1 text-sm font-bold text-brand sm:text-base">{Number(l.price).toLocaleString()} UGX</p>
           </Link>
         ))}
       </section>

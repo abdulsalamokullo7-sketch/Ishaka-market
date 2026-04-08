@@ -79,6 +79,9 @@ export default function ListingDetails({ params }) {
       </div>
       <h1 className="text-xl font-bold">{item.title}</h1>
       <p className="text-gray-700">{item.description}</p>
+      <p className="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-gray-700">
+        Condition: {item.condition || "used"}
+      </p>
       <p className="text-2xl font-bold text-brand">{Number(item.price).toLocaleString()} UGX</p>
       <p>Seller: {item.seller_name} {item.is_verified ? "Verified" : "New Seller"}</p>
       <div className="flex gap-2">

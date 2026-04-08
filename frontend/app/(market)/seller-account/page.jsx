@@ -76,7 +76,9 @@ export default function SellerAccountPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-medium">{l.title}</p>
-                <p className="text-sm text-gray-600">{l.area_name} · {Number(l.price).toLocaleString()} UGX</p>
+                <p className="text-sm text-gray-600">
+                  {l.area_name} · {Number(l.price).toLocaleString()} UGX · {(l.condition || "used").toUpperCase()}
+                </p>
               </div>
               <button
                 type="button"
