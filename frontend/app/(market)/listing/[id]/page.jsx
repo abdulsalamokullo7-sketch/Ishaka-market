@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "../../../../lib/api";
+import { addToCart } from "../../../../utils/cart";
 
 export default function ListingDetails({ params }) {
   const [item, setItem] = useState(null);
@@ -33,6 +34,14 @@ export default function ListingDetails({ params }) {
   if (!item) return <p>Loading...</p>;
   const images = Array.isArray(item.image_urls) && item.image_urls.length ? item.image_urls : [];
   const whatsapp = item.whatsapp_number || item.seller_phone;
+  function addCurrentToCart() {
+    addToCart({
+      id: item.id,
+      title: item.title,
+      price: Number(item.price || 0),
+      image: images[0] || ""
+    });
+  }
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -87,6 +96,7 @@ export default function ListingDetails({ params }) {
       <div className="flex gap-2">
         <a className="rounded bg-green-600 px-4 py-2 text-white" href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`} target="_blank">WhatsApp</a>
         <a className="rounded bg-gray-800 px-4 py-2 text-white" href={`tel:${item.seller_phone}`}>Call</a>
+        <button type="button" className="rounded bg-brand px-4 py-2 text-white" onClick={addCurrentToCart}>Add to Cart</button>
       </div>
 
       <div className="rounded-xl bg-white p-3 shadow-sm">

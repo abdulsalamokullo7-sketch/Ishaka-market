@@ -46,6 +46,13 @@ export default function HomePage() {
     load().catch(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      load().catch(() => setLoading(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query.q, query.category_id, query.area_id]);
+
   return (
     <div className="space-y-5">
       <section className="rounded-xl bg-white p-4 shadow-sm">
@@ -61,7 +68,16 @@ export default function HomePage() {
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
-        <button className="mt-2 rounded-full bg-brand px-4 py-2 text-white" onClick={load}>Search</button>
+        <div className="mt-2 flex gap-2">
+          <button className="rounded-full bg-brand px-4 py-2 text-white" onClick={load}>Search</button>
+          <button
+            type="button"
+            className="rounded-full border px-4 py-2 text-sm"
+            onClick={() => setQuery({ q: "", category_id: "", area_id: "" })}
+          >
+            Clear
+          </button>
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">

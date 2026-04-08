@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { syncAuthSession } from "../utils/api";
+import { cartCount } from "../utils/cart";
 
 function readToken() {
   if (typeof window === "undefined") return false;
@@ -14,6 +15,7 @@ export default function NavBar() {
   const router = useRouter();
   const [logged, setLogged] = useState(null);
   const [role, setRole] = useState("");
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
     setLogged(readToken());
@@ -59,6 +61,17 @@ export default function NavBar() {
     };
   }, []);
 
+  useEffect(() => {
+    const refresh = () => setCount(cartCount());
+    refresh();
+    window.addEventListener("cart-change", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("cart-change", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
   function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -77,6 +90,7 @@ export default function NavBar() {
   const navLinks = (
     <>
       <Link href="/post-listing" className="rounded-full px-3 py-2 hover:bg-gray-100">Post</Link>
+      <Link href="/cart" className="rounded-full px-3 py-2 hover:bg-gray-100">Cart ({count})</Link>
       {!logged || role === "user" ? <Link href="/apply-seller" className="rounded-full px-3 py-2 hover:bg-gray-100">Apply Seller</Link> : null}
       {logged && role === "seller" ? <Link href="/seller-account" className="rounded-full px-3 py-2 hover:bg-gray-100">My Account</Link> : null}
       <Link href="/admin" className="rounded-full px-3 py-2 hover:bg-gray-100">Admin</Link>
@@ -111,7 +125,7 @@ export default function NavBar() {
             <Link href="/apply-seller" className={`rounded-xl px-2 py-2 text-center ${isActive("/apply-seller") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Apply</Link>
           )}
           {logged ? (
-            <Link href="/notifications" className={`rounded-xl px-2 py-2 text-center ${isActive("/notifications") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Alerts</Link>
+            <Link href="/cart" className={`rounded-xl px-2 py-2 text-center ${isActive("/cart") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Cart {count ? `(${count})` : ""}</Link>
           ) : (
             <Link href="/login" className={`rounded-xl px-2 py-2 text-center ${isActive("/login") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Login</Link>
           )}
