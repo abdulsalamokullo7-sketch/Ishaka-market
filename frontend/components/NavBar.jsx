@@ -14,7 +14,6 @@ export default function NavBar() {
   const router = useRouter();
   const [logged, setLogged] = useState(null);
   const [role, setRole] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     setLogged(readToken());
@@ -24,7 +23,6 @@ export default function NavBar() {
     } catch {
       setRole("");
     }
-    setMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -71,6 +69,11 @@ export default function NavBar() {
     router.refresh();
   }
 
+  function isActive(path) {
+    if (!pathname) return false;
+    return pathname === path || (path !== "/" && pathname.startsWith(path));
+  }
+
   const navLinks = (
     <>
       <Link href="/post-listing" className="rounded-full px-3 py-2 hover:bg-gray-100">Post</Link>
@@ -96,20 +99,29 @@ export default function NavBar() {
       <div className="container-x flex items-center justify-between py-2.5">
         <Link href="/" className="text-lg font-bold text-brand">Ishaka Market Hub</Link>
         <nav className="hidden items-center gap-1 text-sm md:flex">{navLinks}</nav>
-        <button
-          type="button"
-          className="rounded-md border px-3 py-1 text-sm md:hidden"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Toggle navigation"
-        >
-          Menu
-        </button>
+        <div className="text-xs text-gray-500 md:hidden">Mobile</div>
       </div>
-      {menuOpen ? (
-        <div className="container-x pb-3 md:hidden">
-          <nav className="grid grid-cols-2 gap-2 text-sm">{navLinks}</nav>
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 px-2 py-2 backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-2 text-[11px]">
+          <Link href="/" className={`rounded-xl px-2 py-2 text-center ${isActive("/") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Home</Link>
+          <Link href="/post-listing" className={`rounded-xl px-2 py-2 text-center ${isActive("/post-listing") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Post</Link>
+          {logged && role === "seller" ? (
+            <Link href="/seller-account" className={`rounded-xl px-2 py-2 text-center ${isActive("/seller-account") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Account</Link>
+          ) : (
+            <Link href="/apply-seller" className={`rounded-xl px-2 py-2 text-center ${isActive("/apply-seller") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Apply</Link>
+          )}
+          {logged ? (
+            <Link href="/notifications" className={`rounded-xl px-2 py-2 text-center ${isActive("/notifications") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Alerts</Link>
+          ) : (
+            <Link href="/login" className={`rounded-xl px-2 py-2 text-center ${isActive("/login") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Login</Link>
+          )}
+          {logged ? (
+            <button type="button" className="rounded-xl px-2 py-2 text-center text-red-600" onClick={logout}>Logout</button>
+          ) : (
+            <Link href="/register" className={`rounded-xl px-2 py-2 text-center ${isActive("/register") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Join</Link>
+          )}
         </div>
-      ) : null}
+      </nav>
     </header>
   );
 }
