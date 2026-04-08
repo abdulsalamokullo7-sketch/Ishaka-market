@@ -326,7 +326,7 @@ router.post("/seller/listings", requireAuth, requireRole("seller"), validate(Joi
   price: Joi.number().min(0).required(),
   category_id: Joi.string().uuid().required(),
   area_id: Joi.string().uuid().required(),
-  image_urls: Joi.array().items(Joi.string().uri()).min(1).max(8).required(),
+  image_urls: Joi.array().items(Joi.string().uri()).min(1).max(5).required(),
   requires_approval: Joi.boolean().default(false)
 })), async (req, res) => {
   const seller = await pool.query("SELECT * FROM sellers WHERE user_id=$1 AND status='approved'", [req.user.id]);
@@ -340,6 +340,28 @@ router.post("/seller/listings", requireAuth, requireRole("seller"), validate(Joi
   const vals = [seller.rows[0].id, req.body.title, req.body.description, req.body.price, req.body.category_id, req.body.area_id, req.body.image_urls, req.body.requires_approval, approved];
   const { rows } = await pool.query(q, vals);
   return res.status(201).json(rows[0]);
+});
+
+router.get("/seller/listings/me", requireAuth, requireRole("seller"), async (req, res) => {
+  const seller = await pool.query("SELECT id, status FROM sellers WHERE user_id=$1 LIMIT 1", [req.user.id]);
+  if (!seller.rows[0]) return res.json([]);
+  const { rows } = await pool.query(`
+    SELECT l.*, c.name AS category_name, a.name AS area_name
+    FROM listings l
+    JOIN categories c ON c.id=l.category_id
+    JOIN areas a ON a.id=l.area_id
+    WHERE l.seller_id=$1
+    ORDER BY l.created_at DESC
+  `, [seller.rows[0].id]);
+  return res.json(rows);
+});
+
+router.delete("/seller/listings/:id", requireAuth, requireRole("seller"), async (req, res) => {
+  const seller = await pool.query("SELECT id FROM sellers WHERE user_id=$1 AND status='approved' LIMIT 1", [req.user.id]);
+  if (!seller.rows[0]) return res.status(403).json({ message: "Seller not approved" });
+  const del = await pool.query("DELETE FROM listings WHERE id=$1 AND seller_id=$2 RETURNING id", [req.params.id, seller.rows[0].id]);
+  if (!del.rows[0]) return res.status(404).json({ message: "Listing not found" });
+  return res.json({ ok: true });
 });
 
 router.post("/delivery/calculate", validate(Joi.object({

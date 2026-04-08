@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
 import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl, syncAuthSession } from "../../../utils/api";
 
+const MAX_IMAGES = 5;
+
 export default function PostListingPage() {
   const router = useRouter();
   const [categories, setCategories] = useState([]);
@@ -84,6 +86,10 @@ export default function PostListingPage() {
     }
     if (files.length < 1) {
       setErr("Add at least one image from your device or camera.");
+      return;
+    }
+    if (files.length > MAX_IMAGES) {
+      setErr(`You can upload up to ${MAX_IMAGES} images.`);
       return;
     }
     setUploading(true);
@@ -174,16 +180,29 @@ export default function PostListingPage() {
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
-          onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          onChange={(e) => {
+            const selected = Array.from(e.target.files || []).slice(0, MAX_IMAGES);
+            setFiles(selected);
+            if (selected.length >= MAX_IMAGES) setErr(`Max ${MAX_IMAGES} images selected.`);
+          }}
         />
         <input
           className="w-full rounded border p-2"
           type="file"
           accept="image/*"
           capture="environment"
-          onChange={(e) => setFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+          onChange={(e) => {
+            const incoming = Array.from(e.target.files || []);
+            setFiles((prev) => {
+              const merged = [...prev, ...incoming].slice(0, MAX_IMAGES);
+              if (merged.length >= MAX_IMAGES) setErr(`Max ${MAX_IMAGES} images selected.`);
+              return merged;
+            });
+          }}
         />
-        <p className="text-xs text-gray-600">{files.length} image(s) selected</p>
+        <p className="text-xs text-gray-600">
+          {files.length} / {MAX_IMAGES} image(s) selected. You can use gallery or camera.
+        </p>
       </div>
       {err ? <p className="text-sm text-red-600">{err}</p> : null}
       {msg ? <p className="text-green-700">{msg}</p> : null}

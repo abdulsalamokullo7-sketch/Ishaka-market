@@ -51,17 +51,17 @@ export default function HomePage() {
       <section className="rounded-xl bg-white p-4 shadow-sm">
         <h1 className="text-xl font-bold">Buy, Sell, Rent and Deliver in Ishaka</h1>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <input className="rounded border p-2" placeholder="Search products/services..." value={query.q} onChange={(e) => setQuery({ ...query, q: e.target.value })} />
-          <select className="rounded border p-2" value={query.category_id} onChange={(e) => setQuery({ ...query, category_id: e.target.value })}>
+          <input className="rounded-full border p-2.5 text-sm" placeholder="Search products/services..." value={query.q} onChange={(e) => setQuery({ ...query, q: e.target.value })} />
+          <select className="rounded-full border p-2.5 text-sm" value={query.category_id} onChange={(e) => setQuery({ ...query, category_id: e.target.value })}>
             <option value="">All categories</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select className="rounded border p-2" value={query.area_id} onChange={(e) => setQuery({ ...query, area_id: e.target.value })}>
+          <select className="rounded-full border p-2.5 text-sm" value={query.area_id} onChange={(e) => setQuery({ ...query, area_id: e.target.value })}>
             <option value="">All areas</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
-        <button className="mt-2 rounded bg-brand px-4 py-2 text-white" onClick={load}>Search</button>
+        <button className="mt-2 rounded-full bg-brand px-4 py-2 text-white" onClick={load}>Search</button>
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -69,8 +69,11 @@ export default function HomePage() {
           <p className="text-sm text-gray-500">Loading products...</p>
         ) : null}
         {listings.map((l) => (
-          <Link key={l.id} href={`/listing/${l.id}`} className="rounded-xl bg-white p-3 shadow-sm">
-            <img src={l.image_urls?.[0]} alt={l.title} loading="lazy" className="h-40 w-full rounded object-cover" />
+          <Link key={l.id} href={`/listing/${l.id}`} className="rounded-2xl bg-white p-3 shadow-sm transition hover:shadow">
+            <div className="grid grid-cols-2 gap-2">
+              <img src={l.image_urls?.[0]} alt={l.title} loading="lazy" className="h-32 w-full rounded-xl object-cover" />
+              <img src={l.image_urls?.[1] || l.image_urls?.[0]} alt={`${l.title} preview`} loading="lazy" className="h-32 w-full rounded-xl object-cover" />
+            </div>
             <h3 className="mt-2 font-semibold">{l.title}</h3>
             <p className="text-sm text-gray-600">{l.area_name}</p>
             <p className="font-bold text-brand">{Number(l.price).toLocaleString()} UGX</p>

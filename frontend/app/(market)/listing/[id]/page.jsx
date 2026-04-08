@@ -8,6 +8,7 @@ export default function ListingDetails({ params }) {
   const [toArea, setToArea] = useState("");
   const [fare, setFare] = useState(null);
   const [fareErr, setFareErr] = useState("");
+  const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
     api(`/listings/${params.id}`).then(setItem);
@@ -30,10 +31,52 @@ export default function ListingDetails({ params }) {
   }
 
   if (!item) return <p>Loading...</p>;
+  const images = Array.isArray(item.image_urls) && item.image_urls.length ? item.image_urls : [];
   const whatsapp = item.whatsapp_number || item.seller_phone;
   return (
     <div className="space-y-4">
-      <img src={item.image_urls?.[0]} alt={item.title} className="h-60 w-full rounded-xl object-cover" />
+      <div className="space-y-2">
+        <div className="relative overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div
+            data-gallery
+            className="flex snap-x snap-mandatory overflow-x-auto"
+            onScroll={(e) => {
+              const w = e.currentTarget.clientWidth || 1;
+              setActiveIdx(Math.round(e.currentTarget.scrollLeft / w));
+            }}
+          >
+            {images.map((src, i) => (
+              <img
+                key={`${src}-${i}`}
+                src={src}
+                alt={`${item.title} ${i + 1}`}
+                className="h-72 w-full min-w-full snap-center object-cover"
+                onLoad={() => {
+                  if (i === 0 && activeIdx !== 0) setActiveIdx(0);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        {images.length > 1 ? (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {images.map((src, i) => (
+              <button
+                key={`thumb-${src}-${i}`}
+                type="button"
+                onClick={() => {
+                  const container = document.querySelector("[data-gallery]");
+                  if (container) container.scrollTo({ left: i * container.clientWidth, behavior: "smooth" });
+                  setActiveIdx(i);
+                }}
+                className={`h-14 w-20 overflow-hidden rounded-lg border ${activeIdx === i ? "border-brand" : "border-gray-200"}`}
+              >
+                <img src={src} alt={`thumb ${i + 1}`} className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
       <h1 className="text-xl font-bold">{item.title}</h1>
       <p className="text-gray-700">{item.description}</p>
       <p className="text-2xl font-bold text-brand">{Number(item.price).toLocaleString()} UGX</p>
