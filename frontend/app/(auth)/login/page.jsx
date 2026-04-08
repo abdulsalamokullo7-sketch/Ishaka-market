@@ -13,12 +13,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      router.push("/");
+      return;
+    }
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("reason")) setAuthHint("Please log in to continue.");
       setReturnTo(params.get("returnTo") || "");
     }
-  }, []);
+  }, [router]);
 
   async function submit(e) {
     e.preventDefault();
@@ -33,12 +38,28 @@ export default function LoginPage() {
     }
   }
 
+  function fillAdminCredentials() {
+    setError("");
+    setForm({ phone: "+256700000001", password: "Admin@123" });
+  }
+
   return (
     <form onSubmit={submit} className="mx-auto max-w-md space-y-3 rounded bg-white p-4 shadow">
       <h1 className="text-xl font-bold">Login</h1>
       {authHint ? <p className="text-sm text-amber-700">{authHint}</p> : null}
       <input className="w-full rounded border p-2" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
       <input className="w-full rounded border p-2" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+      <div className="rounded border bg-gray-50 p-2 text-xs text-gray-700">
+        <p className="mb-2 font-medium">Admin sign in</p>
+        <p>If you seeded the database, use the admin account credentials.</p>
+        <button
+          type="button"
+          onClick={fillAdminCredentials}
+          className="mt-2 rounded border px-2 py-1 text-xs text-brand"
+        >
+          Use admin credentials
+        </button>
+      </div>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <button className="w-full rounded bg-brand py-2 text-white">Login</button>
     </form>

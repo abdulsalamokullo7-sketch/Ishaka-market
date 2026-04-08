@@ -11,6 +11,22 @@ export function isAuthErrorMessage(msg = "") {
   return /missing token|invalid token|unauthorized/i.test(msg);
 }
 
+export function isForbiddenMessage(msg = "") {
+  return /forbidden/i.test(msg);
+}
+
+export function getStoredUserRole() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.role || null;
+  } catch {
+    return null;
+  }
+}
+
 export function loginRedirectUrl() {
   if (typeof window === "undefined") return "/login?reason=auth";
   const returnTo = `${window.location.pathname}${window.location.search || ""}`;

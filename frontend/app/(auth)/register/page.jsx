@@ -12,10 +12,15 @@ export default function RegisterPage() {
   const router = useRouter();
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      router.push("/");
+      return;
+    }
     api("/areas")
       .then(setAreas)
       .catch(() => setAreasErr("Could not load areas. Check API URL and try again."));
-  }, []);
+  }, [router]);
 
   async function submit(e) {
     e.preventDefault();

@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
@@ -66,11 +65,7 @@ export default function ApplySellerPage() {
     <form onSubmit={submit} className="mx-auto max-w-xl space-y-3 rounded bg-white p-4 shadow">
       <h1 className="text-xl font-bold">Seller Application</h1>
       <p className="text-sm text-gray-600">
-        You need an account first.{" "}
-        <Link href="/login" className="text-brand underline">Log in</Link>
-        {" "}or{" "}
-        <Link href="/register" className="text-brand underline">register</Link>
-        , then submit.
+        You are logged in. Submit your application for admin review.
       </p>
       <input className="w-full rounded border p-2" placeholder="Business name" onChange={(e) => setForm({ ...form, business_name: e.target.value })} />
       <input className="w-full rounded border p-2" placeholder="Phone" onChange={(e) => setForm({ ...form, phone: e.target.value })} />

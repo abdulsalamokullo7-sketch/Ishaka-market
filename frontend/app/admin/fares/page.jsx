@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
 import { useRouter } from "next/navigation";
-import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
+import { clearAuth, fetchWithAuth, getStoredUserRole, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function AdminFaresPage() {
   const router = useRouter();
@@ -22,7 +22,23 @@ export default function AdminFaresPage() {
       router.push(loginRedirectUrl());
       return;
     }
-    load();
+    if (getStoredUserRole() !== "admin") {
+      setErr("Admin access only. Log in with an admin account.");
+      return;
+    }
+    load().catch((e) => {
+      const msg = e.message || "Could not load fares.";
+      if (isAuthErrorMessage(msg)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      if (isForbiddenMessage(msg)) {
+        setErr("Admin access only. Log in with an admin account.");
+        return;
+      }
+      setErr(msg);
+    });
   }, [router]);
 
   async function submit(e) {
@@ -37,6 +53,10 @@ export default function AdminFaresPage() {
       if (isAuthErrorMessage(msg2)) {
         clearAuth();
         router.push(loginRedirectUrl());
+        return;
+      }
+      if (isForbiddenMessage(msg2)) {
+        setErr("Admin access only. Log in with an admin account.");
         return;
       }
       setErr(msg2);

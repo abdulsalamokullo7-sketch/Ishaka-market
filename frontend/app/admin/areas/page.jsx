@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
+import { clearAuth, fetchWithAuth, getStoredUserRole, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function AdminAreasPage() {
   const router = useRouter();
@@ -14,6 +14,10 @@ export default function AdminAreasPage() {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push(loginRedirectUrl());
+      return;
+    }
+    if (getStoredUserRole() !== "admin") {
+      setErr("Admin access only. Log in with an admin account.");
       return;
     }
     load();
@@ -30,6 +34,10 @@ export default function AdminAreasPage() {
       if (isAuthErrorMessage(msg)) {
         clearAuth();
         router.push(loginRedirectUrl());
+        return;
+      }
+      if (isForbiddenMessage(msg)) {
+        setErr("Admin access only. Log in with an admin account.");
         return;
       }
       setErr(msg);

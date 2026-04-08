@@ -74,12 +74,9 @@ export default function PostListingPage() {
     <form onSubmit={submit} className="mx-auto max-w-xl space-y-3 rounded bg-white p-4 shadow">
       <h1 className="text-xl font-bold">Post Listing</h1>
       <p className="text-sm text-gray-600">
-        You must be <strong>logged in</strong> as an <strong>approved seller</strong>.{" "}
-        <Link href="/login" className="text-brand underline">Log in</Link>
-        {" · "}
+        You are logged in. You must still be approved as a seller before posting.
+        {" "}
         <Link href="/apply-seller" className="text-brand underline">Apply as seller</Link>
-        {" · "}
-        <Link href="/register" className="text-brand underline">Register</Link>
       </p>
       <input className="w-full rounded border p-2" placeholder="Title" onChange={(e) => setForm({ ...form, title: e.target.value })} />
       <textarea className="w-full rounded border p-2" placeholder="Description" onChange={(e) => setForm({ ...form, description: e.target.value })} />
