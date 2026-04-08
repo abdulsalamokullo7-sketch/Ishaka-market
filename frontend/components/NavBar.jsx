@@ -69,6 +69,13 @@ function BottomIcon({ name }) {
       </svg>
     );
   }
+  if (name === "messages") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+    );
+  }
   return null;
 }
 
@@ -176,9 +183,6 @@ export default function NavBar() {
       <NavLink href="/post-listing" active={isActive("/post-listing")}>
         Post
       </NavLink>
-      <NavLink href="/cart" active={isActive("/cart")}>
-        Cart ({count})
-      </NavLink>
       {logged ? <NavLink href="/orders" active={isActive("/orders")}>Orders</NavLink> : null}
       {logged ? <NavLink href="/messages" active={isActive("/messages")}>Messages</NavLink> : null}
       {!logged || role === "user" ? (
@@ -194,7 +198,6 @@ export default function NavBar() {
       <NavLink href="/admin" active={isActive("/admin")}>
         Admin
       </NavLink>
-      {logged ? <NavLink href="/notifications" active={isActive("/notifications")}>Notifications</NavLink> : null}
       {logged === false ? (
         <>
           <NavLink href="/login" active={isActive("/login")}>
@@ -222,10 +225,10 @@ export default function NavBar() {
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-emerald-100/90 bg-white/90 shadow-sm backdrop-blur-md">
-        <div className="container-x flex items-center justify-center py-3 md:py-3.5">
-          <Link href="/" className="group flex max-w-full items-center gap-3">
+        <div className="container-x flex items-center justify-between gap-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] md:py-3.5">
+          <Link href="/" className="group flex min-w-0 max-w-[min(100%,calc(100%-8rem))] items-center gap-2.5 sm:gap-3 md:max-w-none">
             <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-emerald-800 text-white shadow-md shadow-emerald-900/15 ring-1 ring-white/20 transition group-hover:shadow-lg group-hover:shadow-emerald-900/20"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-emerald-800 text-white shadow-md shadow-emerald-900/15 ring-1 ring-white/20 transition group-hover:shadow-lg group-hover:shadow-emerald-900/20 sm:h-10 sm:w-10"
               aria-hidden
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -237,42 +240,53 @@ export default function NavBar() {
               </svg>
             </span>
             <span className="min-w-0 text-left">
-              <span className="block truncate font-bold tracking-tight text-gray-900 transition group-hover:text-brand md:text-xl">
+              <span className="block truncate text-base font-bold tracking-tight text-gray-900 transition group-hover:text-brand sm:text-lg md:text-xl">
                 Ishaka Market Hub
               </span>
               <span className="hidden text-xs font-medium text-gray-500 sm:block">Buy, sell &amp; deliver locally</span>
             </span>
           </Link>
+
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <Link
+              href="/cart"
+              className={`relative flex items-center gap-1 rounded-t-lg rounded-b-full border-t-[3px] px-2.5 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${
+                isActive("/cart")
+                  ? "border-red-600 bg-red-50 text-red-900 shadow-sm ring-1 ring-red-100"
+                  : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
+              }`}
+              aria-label={`Cart${count ? `, ${count} items` : ""}`}
+            >
+              <svg className="h-5 w-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span className="hidden sm:inline">Cart</span>
+              {count > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                  {count > 99 ? "99+" : count}
+                </span>
+              ) : null}
+            </Link>
+            {logged ? (
+              <Link
+                href="/notifications"
+                className={`flex items-center gap-1 rounded-t-lg rounded-b-full border-t-[3px] px-2.5 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${
+                  isActive("/notifications")
+                    ? "border-red-600 bg-red-50 text-red-900 shadow-sm ring-1 ring-red-100"
+                    : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
+                }`}
+              >
+                <svg className="h-5 w-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span className="max-[380px]:hidden">Alerts</span>
+              </Link>
+            ) : null}
+          </div>
         </div>
       </header>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-red-600 bg-white/95 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-lg">
-        {logged ? (
-          <div className="border-b border-red-100 px-3 pb-2 pt-2 md:hidden">
-            <div className="mx-auto flex max-w-lg justify-center gap-4 text-xs font-semibold">
-              <Link
-                href="/messages"
-                className={`rounded-t-md border-t-2 px-3 py-1 ${
-                  isActive("/messages")
-                    ? "border-red-600 bg-red-50 text-red-900"
-                    : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
-                }`}
-              >
-                Messages
-              </Link>
-              <Link
-                href="/notifications"
-                className={`rounded-t-md border-t-2 px-3 py-1 ${
-                  isActive("/notifications")
-                    ? "border-red-600 bg-red-50 text-red-900"
-                    : "border-red-600/35 text-gray-700 hover:border-red-600/70 hover:bg-red-50/60"
-                }`}
-              >
-                Alerts
-              </Link>
-            </div>
-          </div>
-        ) : null}
         {/* Mobile: icon strip */}
         <div className="px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
@@ -284,7 +298,7 @@ export default function NavBar() {
               <BottomItem href="/apply-seller" label="Apply" icon="user" active={isActive("/apply-seller")} />
             )}
             {logged ? (
-              <BottomItem href="/cart" label="Cart" icon="cart" active={isActive("/cart")} badge={count ? ` ${count}` : ""} />
+              <BottomItem href="/messages" label="Messages" icon="messages" active={isActive("/messages")} />
             ) : (
               <BottomItem href="/login" label="Login" icon="login" active={isActive("/login")} />
             )}
