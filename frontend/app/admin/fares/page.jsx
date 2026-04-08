@@ -1,24 +1,46 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
+import { useRouter } from "next/navigation";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function AdminFaresPage() {
+  const router = useRouter();
   const [areas, setAreas] = useState([]);
   const [fares, setFares] = useState([]);
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
   const [form, setForm] = useState({ from_area_id: "", to_area_id: "", distance_km: "", fare_ugx: "" });
   async function load() {
-    const [a, f] = await Promise.all([api("/areas"), api("/admin/delivery-fares")]);
+    const [a, f] = await Promise.all([api("/areas"), fetchWithAuth("/admin/delivery-fares")]);
     setAreas(a);
     setFares(f);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(loginRedirectUrl());
+      return;
+    }
+    load();
+  }, [router]);
 
   async function submit(e) {
     e.preventDefault();
-    await api("/admin/delivery-fares", { method: "POST", body: JSON.stringify({ ...form, distance_km: Number(form.distance_km), fare_ugx: Number(form.fare_ugx) }) });
-    setMsg("Fare saved.");
-    load();
+    setErr("");
+    try {
+      await fetchWithAuth("/admin/delivery-fares", { method: "POST", body: JSON.stringify({ ...form, distance_km: Number(form.distance_km), fare_ugx: Number(form.fare_ugx) }) });
+      setMsg("Fare saved.");
+      load();
+    } catch (e2) {
+      const msg2 = e2.message || "Failed to save fare.";
+      if (isAuthErrorMessage(msg2)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      setErr(msg2);
+    }
   }
 
   return (
@@ -36,6 +58,7 @@ export default function AdminFaresPage() {
       <input type="number" className="w-full rounded border p-2" placeholder="Distance (km)" onChange={(e) => setForm({ ...form, distance_km: e.target.value })} />
       <input type="number" className="w-full rounded border p-2" placeholder="Fare (UGX)" onChange={(e) => setForm({ ...form, fare_ugx: e.target.value })} />
         {msg ? <p className="text-green-700">{msg}</p> : null}
+        {err ? <p className="text-sm text-red-600">{err}</p> : null}
         <button className="w-full rounded bg-brand py-2 text-white">Save Fare</button>
       </form>
       <div className="rounded bg-white p-4 shadow">

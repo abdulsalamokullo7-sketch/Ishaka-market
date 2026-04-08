@@ -1,5 +1,6 @@
 import "./globals.css";
 import NavBar from "../components/NavBar";
+import BackButton from "../components/BackButton";
 
 export const metadata = {
   title: "Ishaka Market Hub",
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <NavBar />
+        <BackButton />
         <main className="container-x py-4">{children}</main>
       </body>
     </html>

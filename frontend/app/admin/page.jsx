@@ -1,11 +1,31 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api } from "../../lib/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../utils/api";
 
 export default function AdminHome() {
+  const router = useRouter();
   const [stats, setStats] = useState(null);
-  useEffect(() => { api("/admin/analytics").then(setStats).catch(() => null); }, []);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(loginRedirectUrl());
+      return;
+    }
+    fetchWithAuth("/admin/analytics")
+      .then(setStats)
+      .catch((e) => {
+        const msg = e.message || "Could not load admin analytics.";
+        if (isAuthErrorMessage(msg)) {
+          clearAuth();
+          router.push(loginRedirectUrl());
+          return;
+        }
+        setErr(msg);
+      });
+  }, [router]);
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Admin Dashboard</h1>
@@ -15,6 +35,7 @@ export default function AdminHome() {
         <Link href="/admin/areas" className="rounded bg-white p-3 shadow">Areas</Link>
         <Link href="/admin/categories" className="rounded bg-white p-3 shadow">Categories</Link>
       </div>
+      {err ? <p className="text-sm text-red-600">{err}</p> : null}
       {stats ? (
         <div className="rounded bg-white p-4 shadow">
           <p>Users: {stats.users_total}</p>

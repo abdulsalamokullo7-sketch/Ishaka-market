@@ -1,20 +1,50 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "../../../lib/api";
+import { useRouter } from "next/navigation";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function AdminSellersPage() {
+  const router = useRouter();
   const [apps, setApps] = useState([]);
-  async function load() { setApps(await api("/admin/seller-applications")); }
-  useEffect(() => { load(); }, []);
+  const [err, setErr] = useState("");
+  async function load() { setApps(await fetchWithAuth("/admin/seller-applications")); }
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(loginRedirectUrl());
+      return;
+    }
+    load().catch((e) => {
+      const msg = e.message || "Could not load seller applications.";
+      if (isAuthErrorMessage(msg)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      setErr(msg);
+    });
+  }, [router]);
 
   async function update(id, status) {
-    await api(`/admin/seller-applications/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-    load();
+    setErr("");
+    try {
+      await fetchWithAuth(`/admin/seller-applications/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+      await load();
+    } catch (e2) {
+      const msg = e2.message || "Could not update application.";
+      if (isAuthErrorMessage(msg)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      setErr(msg);
+    }
   }
 
   return (
     <div className="space-y-3">
       <h1 className="text-xl font-bold">Seller Applications</h1>
+      {err ? <p className="text-sm text-red-600">{err}</p> : null}
       {apps.map((a) => (
         <div key={a.id} className="rounded bg-white p-3 shadow">
           <p className="font-semibold">{a.business_name} - {a.applicant_name}</p>

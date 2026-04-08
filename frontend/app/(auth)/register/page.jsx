@@ -49,6 +49,7 @@ export default function RegisterPage() {
       });
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      window.dispatchEvent(new Event("auth-change"));
       router.push("/");
     } catch (e2) {
       const msg = e2.message || "Registration failed";

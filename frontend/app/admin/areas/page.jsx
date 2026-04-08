@@ -1,17 +1,39 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function AdminAreasPage() {
+  const router = useRouter();
   const [areas, setAreas] = useState([]);
   const [name, setName] = useState("");
+  const [err, setErr] = useState("");
   async function load() { setAreas(await api("/areas")); }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(loginRedirectUrl());
+      return;
+    }
+    load();
+  }, [router]);
   async function submit(e) {
     e.preventDefault();
-    await api("/admin/areas", { method: "POST", body: JSON.stringify({ name }) });
-    setName("");
-    load();
+    setErr("");
+    try {
+      await fetchWithAuth("/admin/areas", { method: "POST", body: JSON.stringify({ name }) });
+      setName("");
+      load();
+    } catch (e2) {
+      const msg = e2.message || "Failed to save area.";
+      if (isAuthErrorMessage(msg)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      setErr(msg);
+    }
   }
   return (
     <div className="space-y-3">
@@ -23,6 +45,7 @@ export default function AdminAreasPage() {
         </div>
       </form>
       <div className="rounded bg-white p-4 shadow">
+        {err ? <p className="mb-2 text-sm text-red-600">{err}</p> : null}
         {areas.map((a) => <p key={a.id}>{a.name}</p>)}
       </div>
     </div>

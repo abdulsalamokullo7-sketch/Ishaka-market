@@ -1,9 +1,12 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function PostListingPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState([]);
   const [areas, setAreas] = useState([]);
   const [form, setForm] = useState({
@@ -13,13 +16,18 @@ export default function PostListingPage() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(loginRedirectUrl());
+      return;
+    }
     Promise.all([api("/categories"), api("/areas")])
       .then(([c, a]) => {
         setCategories(c);
         setAreas(a);
       })
       .catch(() => setErr("Could not load categories/areas."));
-  }, []);
+  }, [router]);
 
   async function submit(e) {
     e.preventDefault();
@@ -49,10 +57,16 @@ export default function PostListingPage() {
       requires_approval: false
     };
     try {
-      await api("/seller/listings", { method: "POST", body: JSON.stringify(payload) });
+      await fetchWithAuth("/seller/listings", { method: "POST", body: JSON.stringify(payload) });
       setMsg("Listing created successfully.");
     } catch (e2) {
-      setErr(e2.message || "Failed to post.");
+      const msg2 = e2.message || "Failed to post.";
+      if (isAuthErrorMessage(msg2)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      setErr(msg2);
     }
   }
 

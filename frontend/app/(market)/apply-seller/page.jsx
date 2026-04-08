@@ -1,9 +1,12 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function ApplySellerPage() {
+  const router = useRouter();
   const [areas, setAreas] = useState([]);
   const [categories, setCategories] = useState([]);
   const [msg, setMsg] = useState("");
@@ -18,11 +21,16 @@ export default function ApplySellerPage() {
   });
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(loginRedirectUrl());
+      return;
+    }
     Promise.all([api("/areas"), api("/categories")]).then(([a, c]) => {
       setAreas(a);
       setCategories(c);
     });
-  }, []);
+  }, [router]);
 
   async function submit(e) {
     e.preventDefault();
@@ -41,10 +49,16 @@ export default function ApplySellerPage() {
       ...(form.category_id ? { category_id: form.category_id } : { category_id: null })
     };
     try {
-      await api("/seller/apply", { method: "POST", body: JSON.stringify(payload) });
+      await fetchWithAuth("/seller/apply", { method: "POST", body: JSON.stringify(payload) });
       setMsg("Application submitted. Status: PENDING.");
     } catch (e2) {
-      setErr(e2.message || "Could not submit. Are you logged in?");
+      const msg2 = e2.message || "Could not submit. Are you logged in?";
+      if (isAuthErrorMessage(msg2)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      setErr(msg2);
     }
   }
 
