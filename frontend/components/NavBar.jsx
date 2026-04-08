@@ -10,6 +10,85 @@ function readToken() {
   return !!localStorage.getItem("token");
 }
 
+function NavLink({ href, children, active }) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+        active
+          ? "bg-emerald-50 text-brand shadow-sm ring-1 ring-emerald-100"
+          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function BottomIcon({ name }) {
+  const c = "h-5 w-5 shrink-0 stroke-[1.75]";
+  if (name === "home") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    );
+  }
+  if (name === "plus") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+    );
+  }
+  if (name === "user") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    );
+  }
+  if (name === "cart") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    );
+  }
+  if (name === "login") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+      </svg>
+    );
+  }
+  if (name === "spark") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+      </svg>
+    );
+  }
+  return null;
+}
+
+function BottomItem({ href, label, active, badge, icon }) {
+  return (
+    <Link
+      href={href}
+      className={`flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 text-[10px] font-semibold leading-tight transition-colors sm:text-[11px] ${
+        active ? "bg-emerald-50 text-brand shadow-sm ring-1 ring-emerald-100/80" : "text-gray-600 hover:bg-gray-50"
+      }`}
+    >
+      <BottomIcon name={icon} />
+      <span className="max-w-[4.5rem] truncate text-center">
+        {label}
+        {badge != null && badge !== "" ? badge : ""}
+      </span>
+    </Link>
+  );
+}
+
 export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -87,53 +166,130 @@ export default function NavBar() {
     return pathname === path || (path !== "/" && pathname.startsWith(path));
   }
 
-  const navLinks = (
-    <>
-      <Link href="/post-listing" className="rounded-full px-3 py-2 hover:bg-gray-100">Post</Link>
-      <Link href="/cart" className="rounded-full px-3 py-2 hover:bg-gray-100">Cart ({count})</Link>
-      {logged ? <Link href="/orders" className="rounded-full px-3 py-2 hover:bg-gray-100">Orders</Link> : null}
-      {!logged || role === "user" ? <Link href="/apply-seller" className="rounded-full px-3 py-2 hover:bg-gray-100">Apply Seller</Link> : null}
-      {logged && role === "seller" ? <Link href="/seller-account" className="rounded-full px-3 py-2 hover:bg-gray-100">My Account</Link> : null}
-      <Link href="/admin" className="rounded-full px-3 py-2 hover:bg-gray-100">Admin</Link>
-      {logged ? <Link href="/notifications" className="rounded-full px-3 py-2 hover:bg-gray-100">Notifications</Link> : null}
-      {logged === false ? (
-        <>
-          <Link href="/login" className="rounded-full px-3 py-2 hover:bg-gray-100">Login</Link>
-          <Link href="/register" className="rounded-full bg-brand px-3 py-2 text-white">Register</Link>
-        </>
-      ) : logged ? (
-        <button type="button" className="rounded-full px-3 py-2 text-brand underline" onClick={logout}>
-          Log out
-        </button>
-      ) : null}
-    </>
-  );
-
   return (
-    <header className="sticky top-0 z-30 border-b bg-white">
-      <div className="container-x flex items-center justify-between py-2.5">
-        <Link href="/" className="text-lg font-bold text-brand">Ishaka Market Hub</Link>
-        <nav className="hidden items-center gap-1 text-sm md:flex">{navLinks}</nav>
-        <div className="text-xs text-gray-500 md:hidden">Mobile</div>
-      </div>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 px-2 py-2 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-2 text-[11px]">
-          <Link href="/" className={`rounded-xl px-2 py-2 text-center ${isActive("/") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Home</Link>
-          <Link href="/post-listing" className={`rounded-xl px-2 py-2 text-center ${isActive("/post-listing") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Post</Link>
+    <header className="sticky top-0 z-30 border-b border-emerald-100/90 bg-white/90 shadow-sm backdrop-blur-md">
+      <div className="container-x flex items-center justify-between gap-3 py-3 md:py-3.5">
+        <Link href="/" className="group flex min-w-0 flex-1 items-center gap-3 md:flex-initial">
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-emerald-800 text-white shadow-md shadow-emerald-900/15 ring-1 ring-white/20 transition group-hover:shadow-lg group-hover:shadow-emerald-900/20"
+            aria-hidden
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+          </span>
+          <span className="min-w-0 text-left">
+            <span className="block truncate font-bold tracking-tight text-gray-900 transition group-hover:text-brand md:text-xl">
+              Ishaka Market Hub
+            </span>
+            <span className="hidden text-xs font-medium text-gray-500 sm:block">Buy, sell &amp; deliver locally</span>
+          </span>
+        </Link>
+
+        <div className="flex shrink-0 items-center gap-2 md:hidden">
+          {logged ? (
+            <Link
+              href="/orders"
+              className={`rounded-full px-2.5 py-1.5 text-xs font-semibold ${
+                isActive("/orders") ? "bg-emerald-50 text-brand ring-1 ring-emerald-100" : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Orders
+            </Link>
+          ) : null}
+          <Link
+            href="/cart"
+            className={`relative flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold ${
+              isActive("/cart") ? "bg-emerald-50 text-brand ring-1 ring-emerald-100" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+            }`}
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Cart
+            {count > 0 ? (
+              <span className="min-w-[1.1rem] rounded-full bg-brand px-1 text-center text-[10px] text-white">{count > 99 ? "99+" : count}</span>
+            ) : null}
+          </Link>
+        </div>
+
+        <nav className="hidden flex-wrap items-center justify-end gap-1 md:flex lg:gap-1.5">
+          <NavLink href="/post-listing" active={isActive("/post-listing")}>
+            Post
+          </NavLink>
+          <NavLink href="/cart" active={isActive("/cart")}>
+            Cart ({count})
+          </NavLink>
+          {logged ? <NavLink href="/orders" active={isActive("/orders")}>Orders</NavLink> : null}
+          {!logged || role === "user" ? (
+            <NavLink href="/apply-seller" active={isActive("/apply-seller")}>
+              Apply Seller
+            </NavLink>
+          ) : null}
           {logged && role === "seller" ? (
-            <Link href="/seller-account" className={`rounded-xl px-2 py-2 text-center ${isActive("/seller-account") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Account</Link>
+            <NavLink href="/seller-account" active={isActive("/seller-account")}>
+              My Account
+            </NavLink>
+          ) : null}
+          <NavLink href="/admin" active={isActive("/admin")}>
+            Admin
+          </NavLink>
+          {logged ? <NavLink href="/notifications" active={isActive("/notifications")}>Notifications</NavLink> : null}
+          {logged === false ? (
+            <>
+              <NavLink href="/login" active={isActive("/login")}>
+                Login
+              </NavLink>
+              <Link
+                href="/register"
+                className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition hover:bg-emerald-800"
+              >
+                Register
+              </Link>
+            </>
+          ) : logged ? (
+            <button
+              type="button"
+              className="rounded-full px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-red-50 hover:text-red-700"
+              onClick={logout}
+            >
+              Log out
+            </button>
+          ) : null}
+        </nav>
+      </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-emerald-100/90 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-lg md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+          <BottomItem href="/" label="Home" icon="home" active={isActive("/")} />
+          <BottomItem href="/post-listing" label="Post" icon="plus" active={isActive("/post-listing")} />
+          {logged && role === "seller" ? (
+            <BottomItem href="/seller-account" label="Account" icon="user" active={isActive("/seller-account")} />
           ) : (
-            <Link href="/apply-seller" className={`rounded-xl px-2 py-2 text-center ${isActive("/apply-seller") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Apply</Link>
+            <BottomItem href="/apply-seller" label="Apply" icon="user" active={isActive("/apply-seller")} />
           )}
           {logged ? (
-            <Link href="/cart" className={`rounded-xl px-2 py-2 text-center ${isActive("/cart") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Cart {count ? `(${count})` : ""}</Link>
+            <BottomItem href="/cart" label="Cart" icon="cart" active={isActive("/cart")} badge={count ? ` ${count}` : ""} />
           ) : (
-            <Link href="/login" className={`rounded-xl px-2 py-2 text-center ${isActive("/login") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Login</Link>
+            <BottomItem href="/login" label="Login" icon="login" active={isActive("/login")} />
           )}
           {logged ? (
-            <button type="button" className="rounded-xl px-2 py-2 text-center text-red-600" onClick={logout}>Logout</button>
+            <button
+              type="button"
+              className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 text-[10px] font-semibold leading-tight text-red-600 transition-colors hover:bg-red-50 sm:text-[11px]"
+              onClick={logout}
+            >
+              <svg className="h-5 w-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Logout</span>
+            </button>
           ) : (
-            <Link href="/register" className={`rounded-xl px-2 py-2 text-center ${isActive("/register") ? "bg-gray-100 font-semibold text-brand" : "text-gray-700"}`}>Join</Link>
+            <BottomItem href="/register" label="Join" icon="spark" active={isActive("/register")} />
           )}
         </div>
       </nav>
