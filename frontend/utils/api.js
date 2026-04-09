@@ -27,10 +27,33 @@ export function getStoredUserRole() {
   }
 }
 
-export function loginRedirectUrl() {
+/** Only allow same-origin paths (prevents open redirects). */
+export function safeReturnPath(raw) {
+  if (raw == null || typeof raw !== "string") return "";
+  const t = raw.trim();
+  if (!t.startsWith("/") || t.startsWith("//")) return "";
+  return t;
+}
+
+/**
+ * @param {string} [explicitReturnPath] - e.g. `/messages/{listingId}/{sellerUserId}`; defaults to current page
+ */
+export function loginRedirectUrl(explicitReturnPath) {
   if (typeof window === "undefined") return "/login?reason=auth";
-  const returnTo = `${window.location.pathname}${window.location.search || ""}`;
+  let returnTo;
+  if (explicitReturnPath != null && String(explicitReturnPath).trim() !== "") {
+    returnTo = safeReturnPath(String(explicitReturnPath).trim());
+  }
+  if (!returnTo) {
+    returnTo = `${window.location.pathname}${window.location.search || ""}`;
+  }
   return `/login?reason=auth&returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+/** Link to register with optional redirect after signup (must be a safe internal path). */
+export function registerUrl(explicitReturnPath) {
+  const safe = explicitReturnPath ? safeReturnPath(String(explicitReturnPath).trim()) : "";
+  return safe ? `/register?returnTo=${encodeURIComponent(safe)}` : "/register";
 }
 
 export async function fetchWithAuth(endpoint, options = {}) {

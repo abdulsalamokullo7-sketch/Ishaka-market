@@ -4,19 +4,26 @@ import Link from "next/link";
 import { api } from "../lib/api";
 import CartQtyControls from "../components/CartQtyControls";
 
-const HOME_CACHE_KEY = "home-cache-v1";
+const HOME_CACHE_KEY = "home-cache-v2";
 
 export default function HomePage() {
   const [listings, setListings] = useState([]);
   const [categories, setCategories] = useState([]);
   const [areas, setAreas] = useState([]);
-  const [query, setQuery] = useState({ q: "", category_id: "", area_id: "" });
+  const [query, setQuery] = useState({
+    q: "",
+    category_id: "",
+    area_id: "",
+    sort: "newest"
+  });
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     const [l, c, a] = await Promise.all([
-      api(`/listings?limit=20&q=${encodeURIComponent(query.q)}&category_id=${query.category_id}&area_id=${query.area_id}`),
+      api(
+        `/listings?limit=20&q=${encodeURIComponent(query.q)}&category_id=${query.category_id}&area_id=${query.area_id}&sort=${encodeURIComponent(query.sort)}`
+      ),
       api("/categories"),
       api("/areas")
     ]);
@@ -52,32 +59,68 @@ export default function HomePage() {
       load().catch(() => setLoading(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [query.q, query.category_id, query.area_id]);
+  }, [query.q, query.category_id, query.area_id, query.sort]);
+
+  const filterLabel = "text-[10px] font-medium uppercase tracking-wide text-gray-500";
+  const filterInput = "h-8 w-full rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-xl bg-white p-4 shadow-sm">
-        <h1 className="text-xl font-bold">Buy, Sell, Rent and Deliver in Ishaka</h1>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <input className="rounded-full border p-2.5 text-sm" placeholder="Search products/services..." value={query.q} onChange={(e) => setQuery({ ...query, q: e.target.value })} />
-          <select className="relative z-20 rounded-full border bg-white p-2.5 text-base sm:text-sm" value={query.category_id} onChange={(e) => setQuery({ ...query, category_id: e.target.value })}>
-            <option value="">All categories</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select className="relative z-20 rounded-full border bg-white p-2.5 text-base sm:text-sm" value={query.area_id} onChange={(e) => setQuery({ ...query, area_id: e.target.value })}>
-            <option value="">All areas</option>
-            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-        </div>
-        <div className="mt-2 flex gap-2">
-          <button className="rounded-full bg-brand px-4 py-2 text-white" onClick={load}>Search</button>
-          <button
-            type="button"
-            className="rounded-full border px-4 py-2 text-sm"
-            onClick={() => setQuery({ q: "", category_id: "", area_id: "" })}
-          >
-            Clear
-          </button>
+    <div className="space-y-4">
+      <section className="rounded-lg border border-emerald-100/80 bg-white px-3 py-2.5 shadow-sm">
+        <h1 className="text-lg font-bold leading-tight">Buy, Sell, Rent and Deliver in Ishaka</h1>
+        <div className="mt-2 flex flex-wrap items-end gap-x-2 gap-y-2">
+          <label className="min-w-[min(100%,10rem)] flex-[2] sm:min-w-[8rem]">
+            <span className={filterLabel}>Search</span>
+            <input
+              className={filterInput}
+              placeholder="Products…"
+              value={query.q}
+              onChange={(e) => setQuery({ ...query, q: e.target.value })}
+            />
+          </label>
+          <label className="w-[calc(50%-0.25rem)] min-w-0 sm:w-auto sm:max-w-[9.5rem]">
+            <span className={filterLabel}>Category</span>
+            <select className={filterInput} value={query.category_id} onChange={(e) => setQuery({ ...query, category_id: e.target.value })}>
+              <option value="">All</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="w-[calc(50%-0.25rem)] min-w-0 sm:w-auto sm:max-w-[9.5rem]">
+            <span className={filterLabel}>Area</span>
+            <select className={filterInput} value={query.area_id} onChange={(e) => setQuery({ ...query, area_id: e.target.value })}>
+              <option value="">All</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="min-w-0 flex-[1] sm:max-w-[11rem]">
+            <span className={filterLabel}>Sort</span>
+            <select className={filterInput} value={query.sort} onChange={(e) => setQuery({ ...query, sort: e.target.value })}>
+              <option value="newest">Newest</option>
+              <option value="price_asc">Price: low → high</option>
+              <option value="price_desc">Price: high → low</option>
+              <option value="condition">Condition (new first)</option>
+            </select>
+          </label>
+          <div className="flex shrink-0 gap-1.5 pb-0.5">
+            <button type="button" className="h-8 rounded-md bg-brand px-3 text-xs font-semibold text-white" onClick={load}>
+              Search
+            </button>
+            <button
+              type="button"
+              className="h-8 rounded-md border border-gray-200 px-2.5 text-xs text-gray-700"
+              onClick={() => setQuery({ q: "", category_id: "", area_id: "", sort: "newest" })}
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </section>
 

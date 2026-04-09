@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl } from "../../utils/api";
@@ -42,6 +43,11 @@ export default function NotificationsPage() {
               <p className="font-semibold">{n.title}</p>
               <p className="text-sm text-gray-700">{n.message}</p>
               <p className="mt-1 text-xs text-gray-500">{new Date(n.created_at).toLocaleString()}</p>
+              {n.href ? (
+                <Link href={n.href} className="mt-2 inline-block text-sm font-medium text-brand underline">
+                  Open
+                </Link>
+              ) : null}
             </div>
           ))}
         </div>

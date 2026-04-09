@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { safeReturnPath } from "../../../utils/api";
 
 export default function RegisterPage() {
   const [areas, setAreas] = useState([]);
@@ -9,6 +10,7 @@ export default function RegisterPage() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ full_name: "", phone: "", password: "", area_id: "" });
+  const [returnTo, setReturnTo] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -16,6 +18,10 @@ export default function RegisterPage() {
     if (token) {
       router.push("/");
       return;
+    }
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      setReturnTo(p.get("returnTo") || "");
     }
     api("/areas")
       .then(setAreas)
@@ -55,7 +61,8 @@ export default function RegisterPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("auth-change"));
-      router.push("/");
+      const next = returnTo ? safeReturnPath(returnTo) : "";
+      router.push(next || "/");
     } catch (e2) {
       const msg = e2.message || "Registration failed";
       setErr(
@@ -71,6 +78,11 @@ export default function RegisterPage() {
   return (
     <form onSubmit={submit} className="mx-auto max-w-md space-y-3 rounded bg-white p-4 shadow">
       <h1 className="text-xl font-bold">Create account</h1>
+      {safeReturnPath(returnTo) ? (
+        <p className="rounded-lg border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-sm text-emerald-900">
+          After you sign up, we&apos;ll take you back to continue messaging about this product.
+        </p>
+      ) : null}
       {areasErr ? <p className="text-sm text-amber-700">{areasErr}</p> : null}
       <input
         className="w-full rounded border p-2"

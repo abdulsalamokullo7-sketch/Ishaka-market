@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -54,9 +55,11 @@ export default function AdminUsersPage() {
             <tr className="border-b text-left">
               <th className="py-2">Name</th>
               <th className="py-2">Phone</th>
+              <th className="py-2">Email</th>
               <th className="py-2">Role</th>
               <th className="py-2">Area</th>
               <th className="py-2">Status</th>
+              <th className="py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -64,14 +67,20 @@ export default function AdminUsersPage() {
               <tr key={u.id} className="border-b">
                 <td className="py-2">{u.full_name}</td>
                 <td className="py-2">{u.phone}</td>
+                <td className="py-2 text-gray-600">{u.email || "—"}</td>
                 <td className="py-2">{u.role}</td>
                 <td className="py-2">{u.area_name || "-"}</td>
                 <td className="py-2">{u.is_active ? "active" : "inactive"}</td>
+                <td className="py-2">
+                  <Link href={`/admin/users/${u.id}`} className="font-medium text-brand hover:underline">
+                    Manage
+                  </Link>
+                </td>
               </tr>
             ))}
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-3 text-gray-500">No users found.</td>
+                <td colSpan={7} className="py-3 text-gray-500">No users found.</td>
               </tr>
             ) : null}
           </tbody>

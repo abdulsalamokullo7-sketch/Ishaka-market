@@ -37,9 +37,11 @@ export default function AdminHome() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Admin Dashboard</h1>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Link href="/admin/users" className="rounded bg-white p-3 shadow">Users</Link>
         <Link href="/admin/sellers" className="rounded bg-white p-3 shadow">Seller Approvals</Link>
+        <Link href="/admin/listings" className="rounded bg-white p-3 shadow">Listings</Link>
+        <Link href="/admin/orders" className="rounded bg-white p-3 shadow">Orders</Link>
         <Link href="/admin/fares" className="rounded bg-white p-3 shadow">Delivery Fares</Link>
         <Link href="/admin/areas" className="rounded bg-white p-3 shadow">Areas</Link>
         <Link href="/admin/categories" className="rounded bg-white p-3 shadow">Categories</Link>

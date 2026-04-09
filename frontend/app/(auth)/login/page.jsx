@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { registerUrl, safeReturnPath } from "../../../utils/api";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ phone: "", password: "" });
@@ -33,7 +34,8 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("auth-change"));
-      router.push(returnTo || "/");
+      const next = returnTo ? safeReturnPath(returnTo) : "";
+      router.push(next || "/");
     } catch (err) {
       setError(err.message);
     }
@@ -54,6 +56,12 @@ export default function LoginPage() {
       </div>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <button className="w-full rounded bg-brand py-2 text-white">Login</button>
+      <p className="text-center text-sm text-gray-600">
+        New here?{" "}
+        <Link href={registerUrl(safeReturnPath(returnTo))} className="font-medium text-brand underline">
+          Create an account
+        </Link>
+      </p>
     </form>
   );
 }

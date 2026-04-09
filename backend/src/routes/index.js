@@ -172,6 +172,21 @@ router.get("/listings", async (req, res) => {
   if (req.query.verified === "true") where.push("s.is_verified = TRUE");
   where.push("l.is_available = TRUE");
 
+  const sortRaw = String(req.query.sort || "newest").toLowerCase();
+  const sortAllowed = ["newest", "price_asc", "price_desc", "condition"];
+  const sort = sortAllowed.includes(sortRaw) ? sortRaw : "newest";
+  let orderBy = "l.created_at DESC";
+  if (sort === "price_asc") orderBy = "l.price ASC NULLS LAST, l.created_at DESC";
+  if (sort === "price_desc") orderBy = "l.price DESC NULLS LAST, l.created_at DESC";
+  if (sort === "condition") {
+    orderBy = `CASE l.condition::text
+      WHEN 'new' THEN 1
+      WHEN 'refurbished' THEN 2
+      WHEN 'used' THEN 3
+      ELSE 4
+    END ASC, l.created_at DESC`;
+  }
+
   const countQuery = `
     SELECT COUNT(*)::int AS total
     FROM listings l
@@ -186,7 +201,7 @@ router.get("/listings", async (req, res) => {
     JOIN sellers s ON s.id=l.seller_id
     JOIN users u ON u.id=s.user_id
     WHERE ${where.join(" AND ")}
-    ORDER BY l.created_at DESC
+    ORDER BY ${orderBy}
     LIMIT $${i++} OFFSET $${i++}
   `;
   vals.push(limit, offset);
@@ -475,8 +490,34 @@ router.get("/notifications", requireAuth, async (req, res) => {
     });
   }
 
+  const sellerOrders = await pool.query(
+    `
+    SELECT o.id, o.order_group_id, o.amount_ugx, o.qty, o.created_at,
+      l.title AS listing_title, l.id AS listing_id,
+      buyer_u.full_name AS buyer_name
+    FROM orders o
+    JOIN listings l ON l.id = o.listing_id
+    JOIN sellers s ON s.id = l.seller_id
+    JOIN users buyer_u ON buyer_u.id = o.buyer_id
+    WHERE s.user_id = $1::uuid
+    ORDER BY o.created_at DESC
+    LIMIT 40
+  `,
+    [req.user.id]
+  );
+  sellerOrders.rows.forEach((o) => {
+    notices.push({
+      id: `seller-order-${o.id}`,
+      type: "order",
+      title: "New order on your listing",
+      message: `${o.buyer_name} ordered ${o.qty}× ${o.listing_title} — ${Number(o.amount_ugx).toLocaleString()} UGX.`,
+      created_at: o.created_at,
+      href: `/listing/${o.listing_id}`
+    });
+  });
+
   notices.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  return res.json(notices.slice(0, 30));
+  return res.json(notices.slice(0, 50));
 });
 
 router.post("/seller/listings", requireAuth, requireRole("seller"), validate(Joi.object({
@@ -583,17 +624,31 @@ router.post("/orders/checkout", requireAuth, validate(checkoutSchema), async (re
   const lines = [...merged.entries()].map(([listing_id, qty]) => ({ listing_id, qty }));
 
   const groupId = randomUUID();
-  const client = await pool.connect();
+  const buyerId = uuidNorm(req.user.id);
+  if (!buyerId) {
+    return res.status(401).json({ message: "Invalid session." });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+  } catch (e) {
+    console.error("orders/checkout connect", e);
+    return res.status(503).json({ message: "Database is busy. Please try again." });
+  }
+
   try {
     await client.query("BEGIN");
     let total = 0;
     for (const line of lines) {
       const { rows } = await client.query(
         `
-        SELECT l.id, l.price, l.is_available, s.status AS seller_status, s.user_id AS seller_user_id
+        SELECT l.id, l.title, l.price,
+          COALESCE(l.is_available, TRUE) AS is_available,
+          s.status AS seller_status, s.user_id AS seller_user_id
         FROM listings l
         JOIN sellers s ON s.id = l.seller_id
-        WHERE l.id = $1 AND l.approved = TRUE
+        WHERE l.id = $1::uuid AND l.approved = TRUE
       `,
         [line.listing_id]
       );
@@ -602,32 +657,58 @@ router.post("/orders/checkout", requireAuth, validate(checkoutSchema), async (re
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "One or more products are no longer available." });
       }
-      if (!row.is_available || row.seller_status !== "approved") {
+      if (row.is_available === false || row.seller_status !== "approved") {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "One or more products are no longer available." });
       }
-      if (row.seller_user_id === req.user.id) {
+      if (uuidNorm(row.seller_user_id) === buyerId) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "You cannot order your own listing." });
       }
       const unit = Number(row.price);
+      if (!Number.isFinite(unit) || unit < 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "One or more products are no longer available." });
+      }
       const lineTotal = unit * line.qty;
       total += lineTotal;
       await client.query(
         `
         INSERT INTO orders (buyer_id, listing_id, amount_ugx, status, order_group_id, qty, unit_price_ugx)
-        VALUES ($1, $2, $3, 'pending', $4, $5, $6)
+        VALUES ($1::uuid, $2::uuid, $3, 'pending', $4::uuid, $5, $6)
       `,
-        [req.user.id, line.listing_id, lineTotal, groupId, line.qty, unit]
+        [buyerId, line.listing_id, lineTotal, groupId, line.qty, unit]
+      );
+      const titleShort = String(row.title || "item").slice(0, 160);
+      const msgBody =
+        `New order: ${line.qty} × ${unit} UGX = ${lineTotal} UGX for "${titleShort}". Order ref: ${groupId}. Open Messages to reply.`.slice(
+          0,
+          2000
+        );
+      await client.query(
+        `INSERT INTO messages (sender_id, receiver_id, listing_id, body) VALUES ($1::uuid, $2::uuid, $3::uuid, $4)`,
+        [buyerId, row.seller_user_id, line.listing_id, msgBody]
       );
     }
     await client.query("COMMIT");
     return res.status(201).json({ order_group_id: groupId, total_ugx: total, line_count: lines.length });
-  } catch {
-    await client.query("ROLLBACK");
-    return res.status(500).json({ message: "Could not place order." });
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {
+      /* ignore rollback errors (e.g. no active transaction) */
+    }
+    console.error("orders/checkout", err);
+    const code = err && err.code;
+    if (code === "23503") {
+      return res.status(400).json({ message: "One or more products are no longer available." });
+    }
+    return res.status(500).json({
+      message:
+        env.nodeEnv === "development" && err && err.message ? err.message : "Could not place order."
+    });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
@@ -772,10 +853,229 @@ router.get("/admin/analytics", requireAuth, requireRole("admin"), async (_, res)
 
 router.get("/admin/users", requireAuth, requireRole("admin"), async (_, res) => {
   const { rows } = await pool.query(`
-    SELECT u.id, u.full_name, u.phone, u.role, u.is_active, u.created_at, a.name AS area_name
+    SELECT u.id, u.full_name, u.phone, u.email, u.role, u.is_active, u.created_at, u.updated_at, u.area_id, a.name AS area_name
     FROM users u
     LEFT JOIN areas a ON a.id = u.area_id
     ORDER BY u.created_at DESC
+  `);
+  return res.json(rows);
+});
+
+router.get("/admin/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  const { rows: urows } = await pool.query(
+    `
+    SELECT u.id, u.full_name, u.phone, u.email, u.role, u.is_active, u.area_id, u.created_at, u.updated_at,
+      a.name AS area_name
+    FROM users u
+    LEFT JOIN areas a ON a.id = u.area_id
+    WHERE u.id = $1::uuid
+  `,
+    [req.params.id]
+  );
+  if (!urows[0]) return res.status(404).json({ message: "User not found" });
+  const uid = urows[0].id;
+  const { rows: stats } = await pool.query(
+    `
+    SELECT
+      (SELECT COUNT(*)::int FROM orders WHERE buyer_id = $1) AS orders_count,
+      (SELECT COUNT(*)::int FROM messages WHERE sender_id = $1 OR receiver_id = $1) AS messages_count,
+      (SELECT COUNT(*)::int FROM sellers WHERE user_id = $1) AS seller_profile_count,
+      (SELECT COUNT(*)::int FROM listings l JOIN sellers s ON s.id = l.seller_id WHERE s.user_id = $1) AS listings_count
+  `,
+    [uid]
+  );
+  return res.json({ user: urows[0], stats: stats[0] });
+});
+
+const patchAdminUserSchema = Joi.object({
+  is_active: Joi.boolean().optional(),
+  role: Joi.string().valid("user", "seller", "admin").optional()
+}).min(1);
+
+router.patch("/admin/users/:id", requireAuth, requireRole("admin"), validate(patchAdminUserSchema), async (req, res) => {
+  const targetId = req.params.id;
+  const me = uuidNorm(req.user.id);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows: targets } = await client.query("SELECT id, role FROM users WHERE id = $1::uuid", [targetId]);
+    if (!targets[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "User not found" });
+    }
+    const target = targets[0];
+    const { rows: otherAdminRows } = await client.query(
+      "SELECT COUNT(*)::int AS n FROM users WHERE role = 'admin' AND id <> $1::uuid",
+      [targetId]
+    );
+    const otherAdminCount = otherAdminRows[0].n;
+    if (target.role === "admin") {
+      if (req.body.role != null && req.body.role !== "admin" && otherAdminCount < 1) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot change role of the last admin." });
+      }
+      if (req.body.is_active === false && otherAdminCount < 1) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot deactivate the last admin." });
+      }
+    }
+    if (uuidNorm(targetId) === me && req.body.is_active === false) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "You cannot deactivate your own account here." });
+    }
+    const sets = [];
+    const vals = [];
+    let i = 1;
+    if (req.body.is_active !== undefined) {
+      sets.push(`is_active = $${i++}`);
+      vals.push(req.body.is_active);
+    }
+    if (req.body.role !== undefined) {
+      sets.push(`role = $${i++}`);
+      vals.push(req.body.role);
+    }
+    sets.push(`updated_at = NOW()`);
+    vals.push(targetId);
+    const { rows } = await client.query(
+      `UPDATE users SET ${sets.join(", ")} WHERE id = $${i}::uuid RETURNING id, full_name, phone, email, role, is_active, area_id, created_at, updated_at`,
+      vals
+    );
+    await client.query("COMMIT");
+    const { rows: full } = await pool.query(
+      `SELECT u.*, a.name AS area_name FROM users u LEFT JOIN areas a ON a.id = u.area_id WHERE u.id = $1::uuid`,
+      [targetId]
+    );
+    return res.json(full[0]);
+  } catch (e) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {
+      /* ignore */
+    }
+    console.error("admin patch user", e);
+    return res.status(500).json({ message: "Could not update user." });
+  } finally {
+    client.release();
+  }
+});
+
+router.delete("/admin/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  const targetId = req.params.id;
+  if (uuidNorm(targetId) === uuidNorm(req.user.id)) {
+    return res.status(400).json({ message: "You cannot delete your own account." });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows: targets } = await client.query("SELECT id, role FROM users WHERE id = $1::uuid", [targetId]);
+    if (!targets[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (targets[0].role === "admin") {
+      const { rows: acRows } = await client.query(
+        "SELECT COUNT(*)::int AS n FROM users WHERE role = 'admin' AND id <> $1::uuid",
+        [targetId]
+      );
+      if (acRows[0].n < 1) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot delete the last admin account." });
+      }
+    }
+    await client.query("DELETE FROM orders WHERE buyer_id = $1::uuid", [targetId]);
+    await client.query("UPDATE seller_applications SET reviewed_by = NULL WHERE reviewed_by = $1::uuid", [targetId]);
+    const del = await client.query("DELETE FROM users WHERE id = $1::uuid RETURNING id", [targetId]);
+    if (!del.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "User not found" });
+    }
+    await client.query("COMMIT");
+    return res.json({ ok: true });
+  } catch (e) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {
+      /* ignore */
+    }
+    console.error("admin delete user", e);
+    return res.status(500).json({ message: "Could not delete user. They may have data that must be removed first." });
+  } finally {
+    client.release();
+  }
+});
+
+router.get("/admin/listings", requireAuth, requireRole("admin"), async (req, res) => {
+  const { page, limit, offset } = getPagination(req.query);
+  const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM listings l`);
+  const total = countRows[0].total;
+  const { rows } = await pool.query(
+    `
+    SELECT l.*, u.full_name AS seller_name, u.phone AS seller_phone, c.name AS category_name, a.name AS area_name
+    FROM listings l
+    JOIN sellers s ON s.id = l.seller_id
+    JOIN users u ON u.id = s.user_id
+    JOIN categories c ON c.id = l.category_id
+    JOIN areas a ON a.id = l.area_id
+    ORDER BY l.created_at DESC
+    LIMIT $1 OFFSET $2
+  `,
+    [limit, offset]
+  );
+  return res.json({ page, limit, total, data: rows });
+});
+
+const patchAdminListingSchema = Joi.object({
+  approved: Joi.boolean().optional(),
+  is_available: Joi.boolean().optional(),
+  is_featured: Joi.boolean().optional()
+}).min(1);
+
+router.patch("/admin/listings/:id", requireAuth, requireRole("admin"), validate(patchAdminListingSchema), async (req, res) => {
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  if (req.body.approved !== undefined) {
+    sets.push(`approved = $${i++}`);
+    vals.push(req.body.approved);
+  }
+  if (req.body.is_available !== undefined) {
+    sets.push(`is_available = $${i++}`);
+    vals.push(req.body.is_available);
+  }
+  if (req.body.is_featured !== undefined) {
+    sets.push(`is_featured = $${i++}`);
+    vals.push(req.body.is_featured);
+  }
+  if (sets.length === 0) return res.status(400).json({ message: "No changes" });
+  sets.push(`updated_at = NOW()`);
+  vals.push(req.params.id);
+  const { rows } = await pool.query(
+    `UPDATE listings SET ${sets.join(", ")} WHERE id = $${i}::uuid RETURNING *`,
+    vals
+  );
+  if (!rows[0]) return res.status(404).json({ message: "Listing not found" });
+  return res.json(rows[0]);
+});
+
+router.delete("/admin/listings/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  const del = await pool.query("DELETE FROM listings WHERE id = $1::uuid RETURNING id", [req.params.id]);
+  if (!del.rows[0]) return res.status(404).json({ message: "Listing not found" });
+  return res.json({ ok: true });
+});
+
+router.get("/admin/orders", requireAuth, requireRole("admin"), async (_, res) => {
+  const { rows } = await pool.query(`
+    SELECT o.id, o.order_group_id, o.amount_ugx, o.qty, o.status, o.created_at,
+      u.full_name AS buyer_name, u.phone AS buyer_phone,
+      l.title AS listing_title, l.id AS listing_id,
+      seller_u.full_name AS seller_name
+    FROM orders o
+    JOIN users u ON u.id = o.buyer_id
+    JOIN listings l ON l.id = o.listing_id
+    JOIN sellers s ON s.id = l.seller_id
+    JOIN users seller_u ON seller_u.id = s.user_id
+    ORDER BY o.created_at DESC
+    LIMIT 200
   `);
   return res.json(rows);
 });
