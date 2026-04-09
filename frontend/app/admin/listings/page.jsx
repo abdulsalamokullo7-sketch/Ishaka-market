@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import {
   clearAuth,
   fetchWithAuth,
-  hasAdminAccess,
   isAuthErrorMessage,
   isForbiddenMessage,
   loginRedirectUrl
@@ -32,25 +31,19 @@ export default function AdminListingsPage() {
       router.push(loginRedirectUrl());
       return;
     }
-    (async () => {
-      if (!(await hasAdminAccess())) {
+    load(1).catch((e) => {
+      const msg = e.message || "Could not load listings.";
+      if (isAuthErrorMessage(msg)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      if (isForbiddenMessage(msg)) {
         setErr("Admin access only. Log in with an admin account.");
         return;
       }
-      load(1).catch((e) => {
-        const msg = e.message || "Could not load listings.";
-        if (isAuthErrorMessage(msg)) {
-          clearAuth();
-          router.push(loginRedirectUrl());
-          return;
-        }
-        if (isForbiddenMessage(msg)) {
-          setErr("Admin access only. Log in with an admin account.");
-          return;
-        }
-        setErr(msg);
-      });
-    })();
+      setErr(msg);
+    });
   }, [router]);
 
   async function patchListing(id, body) {

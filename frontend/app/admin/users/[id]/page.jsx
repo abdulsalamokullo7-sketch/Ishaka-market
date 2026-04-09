@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import {
   clearAuth,
   fetchWithAuth,
-  hasAdminAccess,
   isAuthErrorMessage,
   isForbiddenMessage,
   loginRedirectUrl
@@ -33,25 +32,19 @@ export default function AdminUserDetailPage() {
       router.push(loginRedirectUrl());
       return;
     }
-    (async () => {
-      if (!(await hasAdminAccess())) {
+    load().catch((e) => {
+      const msg = e.message || "Could not load user.";
+      if (isAuthErrorMessage(msg)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      if (isForbiddenMessage(msg)) {
         setErr("Admin access only. Log in with an admin account.");
         return;
       }
-      load().catch((e) => {
-        const msg = e.message || "Could not load user.";
-        if (isAuthErrorMessage(msg)) {
-          clearAuth();
-          router.push(loginRedirectUrl());
-          return;
-        }
-        if (isForbiddenMessage(msg)) {
-          setErr("Admin access only. Log in with an admin account.");
-          return;
-        }
-        setErr(msg);
-      });
-    })();
+      setErr(msg);
+    });
   }, [router, id]);
 
   async function saveRole() {

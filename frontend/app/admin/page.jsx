@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { clearAuth, fetchWithAuth, hasAdminAccess, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../utils/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../utils/api";
 
 export default function AdminHome() {
   const router = useRouter();
@@ -14,27 +14,21 @@ export default function AdminHome() {
       router.push(loginRedirectUrl());
       return;
     }
-    (async () => {
-      if (!(await hasAdminAccess())) {
-        setErr("Admin access only. Log in with an admin account.");
-        return;
-      }
-      fetchWithAuth("/admin/analytics")
-        .then(setStats)
-        .catch((e) => {
-          const msg = e.message || "Could not load admin analytics.";
-          if (isAuthErrorMessage(msg)) {
-            clearAuth();
-            router.push(loginRedirectUrl());
-            return;
-          }
-          if (isForbiddenMessage(msg)) {
-            setErr("Admin access only. Log in with an admin account.");
-            return;
-          }
-          setErr(msg);
-        });
-    })();
+    fetchWithAuth("/admin/analytics")
+      .then(setStats)
+      .catch((e) => {
+        const msg = e.message || "Could not load admin analytics.";
+        if (isAuthErrorMessage(msg)) {
+          clearAuth();
+          router.push(loginRedirectUrl());
+          return;
+        }
+        if (isForbiddenMessage(msg)) {
+          setErr("Admin access only. Log in with an admin account.");
+          return;
+        }
+        setErr(msg);
+      });
   }, [router]);
   return (
     <div className="space-y-4">

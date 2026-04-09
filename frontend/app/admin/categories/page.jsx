@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { clearAuth, fetchWithAuth, hasAdminAccess, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../../utils/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function AdminCategoriesPage() {
   const router = useRouter();
@@ -16,13 +16,7 @@ export default function AdminCategoriesPage() {
       router.push(loginRedirectUrl());
       return;
     }
-    (async () => {
-      if (!(await hasAdminAccess())) {
-        setErr("Admin access only. Log in with an admin account.");
-        return;
-      }
-      load();
-    })();
+    load();
   }, [router]);
   async function submit(e) {
     e.preventDefault();

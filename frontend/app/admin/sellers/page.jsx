@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearAuth, fetchWithAuth, hasAdminAccess, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../../utils/api";
+import { clearAuth, fetchWithAuth, isAuthErrorMessage, isForbiddenMessage, loginRedirectUrl } from "../../../utils/api";
 
 export default function AdminSellersPage() {
   const router = useRouter();
@@ -15,25 +15,19 @@ export default function AdminSellersPage() {
       router.push(loginRedirectUrl());
       return;
     }
-    (async () => {
-      if (!(await hasAdminAccess())) {
+    load().catch((e) => {
+      const msg = e.message || "Could not load seller applications.";
+      if (isAuthErrorMessage(msg)) {
+        clearAuth();
+        router.push(loginRedirectUrl());
+        return;
+      }
+      if (isForbiddenMessage(msg)) {
         setErr("Admin access only. Log in with an admin account.");
         return;
       }
-      load().catch((e) => {
-        const msg = e.message || "Could not load seller applications.";
-        if (isAuthErrorMessage(msg)) {
-          clearAuth();
-          router.push(loginRedirectUrl());
-          return;
-        }
-        if (isForbiddenMessage(msg)) {
-          setErr("Admin access only. Log in with an admin account.");
-          return;
-        }
-        setErr(msg);
-      });
-    })();
+      setErr(msg);
+    });
   }, [router]);
 
   async function update(id, status) {
