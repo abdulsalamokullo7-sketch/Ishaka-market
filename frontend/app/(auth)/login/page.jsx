@@ -41,11 +41,6 @@ export default function LoginPage() {
     }
   }
 
-  function fillAdmin() {
-    setForm({ phone: "0777888777", password: "Admin2025" });
-    setError("");
-  }
-
   return (
     <form onSubmit={submit} className="mx-auto max-w-md space-y-3 rounded bg-white p-4 shadow">
       <h1 className="text-xl font-bold">Login</h1>
@@ -55,13 +50,6 @@ export default function LoginPage() {
       <div className="rounded border bg-gray-50 p-2 text-xs text-gray-700">
         <p className="mb-2 font-medium">Admin sign in</p>
         <p>Use the admin account credentials to access admin settings.</p>
-        <button
-          type="button"
-          onClick={fillAdmin}
-          className="mt-2 rounded border px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
-        >
-          Login as admin
-        </button>
         <Link href="/admin" className="mt-2 inline-block rounded border px-2 py-1 text-xs text-brand">
           Open admin login
         </Link>
