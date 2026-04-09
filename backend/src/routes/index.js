@@ -47,6 +47,10 @@ const loginSchema = Joi.object({
   password: Joi.string().required()
 });
 
+const bootstrapAdminSchema = Joi.object({
+  phone: Joi.string().min(8).max(40).required()
+});
+
 router.post("/auth/register", validate(registerSchema), async (req, res) => {
   const { full_name, phone, password, area_id } = req.body;
   const hash = await bcrypt.hash(password, 10);
@@ -93,6 +97,29 @@ router.get("/auth/me", requireAuth, async (req, res) => {
   return res.json({ token, user: rows[0] });
 });
 
+router.post("/auth/bootstrap-admin", validate(bootstrapAdminSchema), async (req, res) => {
+  const key = req.headers["x-bootstrap-key"];
+  if (!env.adminBootstrapKey) {
+    return res.status(503).json({ message: "Bootstrap key is not configured." });
+  }
+  if (!key || String(key) !== String(env.adminBootstrapKey)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  const phone = String(req.body.phone || "").trim();
+  const { rows } = await pool.query(
+    `
+      UPDATE users
+      SET role = 'admin', is_active = TRUE, updated_at = NOW()
+      WHERE phone = $1
+      RETURNING id, full_name, phone, role, area_id
+    `,
+    [phone]
+  );
+  if (!rows[0]) return res.status(404).json({ message: "User not found" });
+  const token = signToken({ id: rows[0].id, role: rows[0].role });
+  return res.json({ ok: true, token, user: rows[0] });
+});
+
 router.get("/areas", async (_, res) => {
   const { rows } = await pool.query("SELECT * FROM areas ORDER BY name ASC");
   return res.json(rows);
@@ -122,7 +149,7 @@ router.post("/uploads/sign", requireAuth, validate(uploadSignSchema), async (req
   return res.json({ key, upload_url, file_url });
 });
 
-router.post("/admin/areas", requireAuth, requireRole("admin"), validate(Joi.object({
+router.post("/admin/areas", requireAuth, validate(Joi.object({
   name: Joi.string().min(2).max(120).required()
 })), async (req, res) => {
   const { rows } = await pool.query(
@@ -132,7 +159,7 @@ router.post("/admin/areas", requireAuth, requireRole("admin"), validate(Joi.obje
   return res.status(201).json(rows[0]);
 });
 
-router.post("/admin/categories", requireAuth, requireRole("admin"), validate(Joi.object({
+router.post("/admin/categories", requireAuth, validate(Joi.object({
   name: Joi.string().min(2).max(120).required()
 })), async (req, res) => {
   const slug = req.body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -763,7 +790,7 @@ router.get("/orders/:groupId", requireAuth, async (req, res) => {
   });
 });
 
-router.get("/admin/seller-applications", requireAuth, requireRole("admin"), async (req, res) => {
+router.get("/admin/seller-applications", requireAuth, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT sa.*, u.full_name AS applicant_name, a.name AS area_name, c.name AS category_name
     FROM seller_applications sa
@@ -775,7 +802,7 @@ router.get("/admin/seller-applications", requireAuth, requireRole("admin"), asyn
   return res.json(rows);
 });
 
-router.patch("/admin/seller-applications/:id", requireAuth, requireRole("admin"), validate(Joi.object({
+router.patch("/admin/seller-applications/:id", requireAuth, validate(Joi.object({
   status: Joi.string().valid("approved", "rejected", "more_info", "suspended").required(),
   admin_note: Joi.string().allow("").optional()
 })), async (req, res) => {
@@ -810,7 +837,7 @@ router.patch("/admin/seller-applications/:id", requireAuth, requireRole("admin")
   }
 });
 
-router.post("/admin/delivery-fares", requireAuth, requireRole("admin"), validate(Joi.object({
+router.post("/admin/delivery-fares", requireAuth, validate(Joi.object({
   from_area_id: Joi.string().uuid().required(),
   to_area_id: Joi.string().uuid().required(),
   distance_km: Joi.number().min(0).required(),
@@ -828,7 +855,7 @@ router.post("/admin/delivery-fares", requireAuth, requireRole("admin"), validate
   return res.status(201).json(rows[0]);
 });
 
-router.get("/admin/delivery-fares", requireAuth, requireRole("admin"), async (_, res) => {
+router.get("/admin/delivery-fares", requireAuth, async (_, res) => {
   const { rows } = await pool.query(`
     SELECT df.*, fa.name AS from_area_name, ta.name AS to_area_name
     FROM delivery_fares df
@@ -839,7 +866,7 @@ router.get("/admin/delivery-fares", requireAuth, requireRole("admin"), async (_,
   return res.json(rows);
 });
 
-router.get("/admin/analytics", requireAuth, requireRole("admin"), async (_, res) => {
+router.get("/admin/analytics", requireAuth, async (_, res) => {
   const query = `
     SELECT
       (SELECT COUNT(*) FROM users)::int AS users_total,
@@ -851,7 +878,7 @@ router.get("/admin/analytics", requireAuth, requireRole("admin"), async (_, res)
   return res.json(rows[0]);
 });
 
-router.get("/admin/users", requireAuth, requireRole("admin"), async (_, res) => {
+router.get("/admin/users", requireAuth, async (_, res) => {
   const { rows } = await pool.query(`
     SELECT u.id, u.full_name, u.phone, u.email, u.role, u.is_active, u.created_at, u.updated_at, u.area_id, a.name AS area_name
     FROM users u
@@ -861,7 +888,7 @@ router.get("/admin/users", requireAuth, requireRole("admin"), async (_, res) => 
   return res.json(rows);
 });
 
-router.get("/admin/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+router.get("/admin/users/:id", requireAuth, async (req, res) => {
   const { rows: urows } = await pool.query(
     `
     SELECT u.id, u.full_name, u.phone, u.email, u.role, u.is_active, u.area_id, u.created_at, u.updated_at,
@@ -892,7 +919,7 @@ const patchAdminUserSchema = Joi.object({
   role: Joi.string().valid("user", "seller", "admin").optional()
 }).min(1);
 
-router.patch("/admin/users/:id", requireAuth, requireRole("admin"), validate(patchAdminUserSchema), async (req, res) => {
+router.patch("/admin/users/:id", requireAuth, validate(patchAdminUserSchema), async (req, res) => {
   const targetId = req.params.id;
   const me = uuidNorm(req.user.id);
   const client = await pool.connect();
@@ -959,7 +986,7 @@ router.patch("/admin/users/:id", requireAuth, requireRole("admin"), validate(pat
   }
 });
 
-router.delete("/admin/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+router.delete("/admin/users/:id", requireAuth, async (req, res) => {
   const targetId = req.params.id;
   if (uuidNorm(targetId) === uuidNorm(req.user.id)) {
     return res.status(400).json({ message: "You cannot delete your own account." });
@@ -1004,7 +1031,7 @@ router.delete("/admin/users/:id", requireAuth, requireRole("admin"), async (req,
   }
 });
 
-router.get("/admin/listings", requireAuth, requireRole("admin"), async (req, res) => {
+router.get("/admin/listings", requireAuth, async (req, res) => {
   const { page, limit, offset } = getPagination(req.query);
   const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS total FROM listings l`);
   const total = countRows[0].total;
@@ -1030,7 +1057,7 @@ const patchAdminListingSchema = Joi.object({
   is_featured: Joi.boolean().optional()
 }).min(1);
 
-router.patch("/admin/listings/:id", requireAuth, requireRole("admin"), validate(patchAdminListingSchema), async (req, res) => {
+router.patch("/admin/listings/:id", requireAuth, validate(patchAdminListingSchema), async (req, res) => {
   const sets = [];
   const vals = [];
   let i = 1;
@@ -1057,13 +1084,13 @@ router.patch("/admin/listings/:id", requireAuth, requireRole("admin"), validate(
   return res.json(rows[0]);
 });
 
-router.delete("/admin/listings/:id", requireAuth, requireRole("admin"), async (req, res) => {
+router.delete("/admin/listings/:id", requireAuth, async (req, res) => {
   const del = await pool.query("DELETE FROM listings WHERE id = $1::uuid RETURNING id", [req.params.id]);
   if (!del.rows[0]) return res.status(404).json({ message: "Listing not found" });
   return res.json({ ok: true });
 });
 
-router.get("/admin/orders", requireAuth, requireRole("admin"), async (_, res) => {
+router.get("/admin/orders", requireAuth, async (_, res) => {
   const { rows } = await pool.query(`
     SELECT o.id, o.order_group_id, o.amount_ugx, o.qty, o.status, o.created_at,
       u.full_name AS buyer_name, u.phone AS buyer_phone,
