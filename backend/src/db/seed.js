@@ -29,7 +29,7 @@ async function run() {
   }
 
   const area = await pool.query("SELECT id FROM areas WHERE name='Town Center' LIMIT 1");
-  const adminPhone = "0787878787";
+  const adminPhone = "0777888777";
   const adminPlain = "Admin2025";
   const adminPass = await bcrypt.hash(adminPlain, 10);
   const adminExists = await pool.query("SELECT id FROM users WHERE role='admin' LIMIT 1");

@@ -24,7 +24,8 @@ function requireRole(...roles) {
         [uid]
       );
       const user = rows[0];
-      if (!user || !user.is_active || !roles.includes(user.role)) {
+      // Admin can access any protected role route.
+      if (!user || !user.is_active || (user.role !== "admin" && !roles.includes(user.role))) {
         return res.status(403).json({ message: "Forbidden" });
       }
       req.user.role = user.role;
