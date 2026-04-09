@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { syncAuthSession } from "../utils/api";
 import { cartCount } from "../utils/cart";
@@ -76,6 +76,13 @@ function BottomIcon({ name }) {
       </svg>
     );
   }
+  if (name === "admin") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z" />
+      </svg>
+    );
+  }
   return null;
 }
 
@@ -100,7 +107,6 @@ function BottomItem({ href, label, active, badge, icon }) {
 
 export default function NavBar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [logged, setLogged] = useState(null);
   const [role, setRole] = useState("");
   const [count, setCount] = useState(0);
@@ -160,16 +166,6 @@ export default function NavBar() {
     };
   }, []);
 
-  function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setLogged(false);
-    setRole("");
-    window.dispatchEvent(new Event("auth-change"));
-    router.push("/");
-    router.refresh();
-  }
-
   function isActive(path) {
     if (!pathname) return false;
     return pathname === path || (path !== "/" && pathname.startsWith(path));
@@ -210,14 +206,6 @@ export default function NavBar() {
             Register
           </Link>
         </>
-      ) : logged ? (
-        <button
-          type="button"
-          className="rounded-t-lg rounded-b-full border-t-[3px] border-red-600/35 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-red-600/70 hover:bg-red-50/60 hover:text-red-800"
-          onClick={logout}
-        >
-          Log out
-        </button>
       ) : null}
     </>
   );
@@ -303,16 +291,7 @@ export default function NavBar() {
               <BottomItem href="/login" label="Login" icon="login" active={isActive("/login")} />
             )}
             {logged ? (
-              <button
-                type="button"
-                className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-b-2xl rounded-t-lg border-t-[3px] border-red-600/35 px-1 py-1.5 text-[10px] font-semibold leading-tight text-red-800 transition-colors hover:border-red-600/70 hover:bg-red-50/80 sm:text-[11px]"
-                onClick={logout}
-              >
-                <svg className="h-5 w-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span>Logout</span>
-              </button>
+              <BottomItem href="/admin" label="Admin" icon="admin" active={isActive("/admin")} />
             ) : (
               <BottomItem href="/register" label="Join" icon="spark" active={isActive("/register")} />
             )}

@@ -71,6 +71,12 @@ export default function SellerAccountPage() {
     }
   }
 
+  function logout() {
+    clearAuth();
+    router.push("/");
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Seller Account</h1>
@@ -80,9 +86,18 @@ export default function SellerAccountPage() {
         <p className="text-sm text-gray-600">Phone: {seller?.phone || "-"}</p>
         <p className="text-sm text-gray-600">Status: {seller?.status || "not approved"}</p>
         <p className="text-sm text-gray-600">Badge: {seller?.badge || "new"}</p>
-        <Link href="/post-listing" className="mt-2 inline-block rounded-full bg-brand px-4 py-2 text-sm text-white">
-          Add New Product
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link href="/post-listing" className="inline-block rounded-full bg-brand px-4 py-2 text-sm text-white">
+            Add New Product
+          </Link>
+          <button
+            type="button"
+            onClick={logout}
+            className="rounded-full border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">

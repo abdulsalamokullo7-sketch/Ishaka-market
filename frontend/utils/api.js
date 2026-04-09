@@ -15,16 +15,35 @@ export function isForbiddenMessage(msg = "") {
   return /forbidden/i.test(msg);
 }
 
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = base64.length % 4;
+    const normalized = base64 + (pad ? "=".repeat(4 - pad) : "");
+    const json = atob(normalized);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 export function getStoredUserRole() {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem("user");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.role || null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.role) return parsed.role;
+    }
   } catch {
-    return null;
+    // Ignore and fallback to token payload.
   }
+  const token = localStorage.getItem("token") || "";
+  const payload = decodeJwtPayload(token);
+  return payload?.role || null;
 }
 
 /** Only allow same-origin paths (prevents open redirects). */
