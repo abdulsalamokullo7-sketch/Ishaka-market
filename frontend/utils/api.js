@@ -46,6 +46,12 @@ export function getStoredUserRole() {
   return payload?.role || null;
 }
 
+export async function hasAdminAccess() {
+  const user = await syncAuthSession();
+  if (user?.role) return user.role === "admin";
+  return getStoredUserRole() === "admin";
+}
+
 /** Only allow same-origin paths (prevents open redirects). */
 export function safeReturnPath(raw) {
   if (raw == null || typeof raw !== "string") return "";

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import {
   clearAuth,
   fetchWithAuth,
-  getStoredUserRole,
+  hasAdminAccess,
   isAuthErrorMessage,
   isForbiddenMessage,
   loginRedirectUrl
@@ -32,23 +32,25 @@ export default function AdminListingsPage() {
       router.push(loginRedirectUrl());
       return;
     }
-    if (getStoredUserRole() !== "admin") {
-      setErr("Admin access only. Log in with an admin account.");
-      return;
-    }
-    load(1).catch((e) => {
-      const msg = e.message || "Could not load listings.";
-      if (isAuthErrorMessage(msg)) {
-        clearAuth();
-        router.push(loginRedirectUrl());
-        return;
-      }
-      if (isForbiddenMessage(msg)) {
+    (async () => {
+      if (!(await hasAdminAccess())) {
         setErr("Admin access only. Log in with an admin account.");
         return;
       }
-      setErr(msg);
-    });
+      load(1).catch((e) => {
+        const msg = e.message || "Could not load listings.";
+        if (isAuthErrorMessage(msg)) {
+          clearAuth();
+          router.push(loginRedirectUrl());
+          return;
+        }
+        if (isForbiddenMessage(msg)) {
+          setErr("Admin access only. Log in with an admin account.");
+          return;
+        }
+        setErr(msg);
+      });
+    })();
   }, [router]);
 
   async function patchListing(id, body) {

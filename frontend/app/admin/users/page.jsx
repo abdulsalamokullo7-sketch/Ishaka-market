@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   clearAuth,
   fetchWithAuth,
-  getStoredUserRole,
+  hasAdminAccess,
   isAuthErrorMessage,
   isForbiddenMessage,
   loginRedirectUrl
@@ -26,23 +26,25 @@ export default function AdminUsersPage() {
       router.push(loginRedirectUrl());
       return;
     }
-    if (getStoredUserRole() !== "admin") {
-      setErr("Admin access only. Log in with an admin account.");
-      return;
-    }
-    load().catch((e) => {
-      const msg = e.message || "Could not load users.";
-      if (isAuthErrorMessage(msg)) {
-        clearAuth();
-        router.push(loginRedirectUrl());
-        return;
-      }
-      if (isForbiddenMessage(msg)) {
+    (async () => {
+      if (!(await hasAdminAccess())) {
         setErr("Admin access only. Log in with an admin account.");
         return;
       }
-      setErr(msg);
-    });
+      load().catch((e) => {
+        const msg = e.message || "Could not load users.";
+        if (isAuthErrorMessage(msg)) {
+          clearAuth();
+          router.push(loginRedirectUrl());
+          return;
+        }
+        if (isForbiddenMessage(msg)) {
+          setErr("Admin access only. Log in with an admin account.");
+          return;
+        }
+        setErr(msg);
+      });
+    })();
   }, [router]);
 
   return (
