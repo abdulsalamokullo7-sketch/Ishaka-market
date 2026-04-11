@@ -1,5 +1,5 @@
 const express = require("express");
-const { randomUUID } = require("crypto");
+const { randomUUID, timingSafeEqual } = require("crypto");
 const bcrypt = require("bcryptjs");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
@@ -47,6 +47,81 @@ const loginSchema = Joi.object({
   password: Joi.string().required()
 });
 
+const promoteAdminSchema = Joi.object({
+  phone: Joi.string().min(8).max(40).required()
+});
+
+function bootstrapKeysMatch(provided, expected) {
+  const a = String(provided || "").trim();
+  const b = String(expected || "").trim();
+  if (!a || !b || a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+/** Same logical number as 0777…, +256777…, 256777… for UNIQUE phone lookups. */
+function phoneLookupVariants(phone) {
+  const t = String(phone || "").trim().replace(/\s+/g, "");
+  const out = new Set([t]);
+  const digits = t.replace(/\D/g, "");
+  if (digits.length < 9) return [...out];
+  let local = digits;
+  if (local.startsWith("256")) local = local.slice(3);
+  if (local.startsWith("0")) local = local.slice(1);
+  if (local.length === 9) {
+    out.add(`0${local}`);
+    out.add(`+256${local}`);
+    out.add(`256${local}`);
+  }
+  return [...out];
+}
+
+/**
+ * Promote an existing user to admin (no auth). Protected by ADMIN_BOOTSTRAP_KEY in env.
+ * Use on Render when you cannot open Postgres: set a long random secret, redeploy, call once with curl, then remove the env var.
+ */
+router.post("/auth/promote-admin", validate(promoteAdminSchema), async (req, res) => {
+  const configured = env.adminBootstrapKey;
+  if (!configured || configured.length < 16) {
+    return res.status(503).json({
+      message:
+        "ADMIN_BOOTSTRAP_KEY is not set or too short (min 16 characters). Add it in Render → Environment, redeploy, then try again."
+    });
+  }
+  const headerKey =
+    req.headers["x-promote-admin-key"] ||
+    req.headers["X-Promote-Admin-Key"] ||
+    req.headers["x-bootstrap-key"] ||
+    "";
+  if (!bootstrapKeysMatch(headerKey, configured)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  const variants = phoneLookupVariants(req.body.phone);
+  const { rows } = await pool.query(
+    `
+    UPDATE users
+    SET role = 'admin', is_active = TRUE, updated_at = NOW()
+    WHERE phone = ANY($1::text[])
+    RETURNING id, full_name, phone, role, area_id
+    `,
+    [variants]
+  );
+  if (!rows[0]) {
+    return res.status(404).json({
+      message: `No user found for phone "${req.body.phone}". Register that number first, or use the exact phone string stored in the database.`
+    });
+  }
+  const token = signToken({ id: rows[0].id, role: rows[0].role });
+  return res.json({
+    ok: true,
+    message: "User is now admin. Log in with this phone; you can remove ADMIN_BOOTSTRAP_KEY from the server after this.",
+    token,
+    user: rows[0]
+  });
+});
 
 router.post("/auth/register", validate(registerSchema), async (req, res) => {
   const { full_name, phone, password, area_id } = req.body;
