@@ -88,7 +88,7 @@ export default function SellerAccountPage() {
         <p className="text-sm text-gray-600">Badge: {seller?.badge || "new"}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link href="/post-listing" className="inline-block rounded-full bg-brand px-4 py-2 text-sm text-white">
-            Add New Product
+            Sell an item
           </Link>
           <button
             type="button"

@@ -7,6 +7,27 @@ import { clearAuth, fetchWithAuth, isAuthErrorMessage, loginRedirectUrl, syncAut
 
 const MAX_IMAGES = 5;
 
+/** Must match backend /uploads/sign (image/jpeg, image/png, image/webp). */
+const ACCEPT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ACCEPT_ATTR = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
+
+function isAllowedImageFile(file) {
+  const mime = (file.type || "").toLowerCase().trim();
+  if (ACCEPT_TYPES.has(mime)) return true;
+  const name = (file.name || "").toLowerCase();
+  return /\.(jpe?g|png|webp)$/i.test(name);
+}
+
+function partitionImageFiles(fileList) {
+  const ok = [];
+  const rejected = [];
+  for (const f of fileList) {
+    if (isAllowedImageFile(f)) ok.push(f);
+    else rejected.push(f.name || f.type || "Unknown file");
+  }
+  return { ok, rejected };
+}
+
 export default function PostListingPage() {
   const router = useRouter();
   const [categories, setCategories] = useState([]);
@@ -85,7 +106,7 @@ export default function PostListingPage() {
       return;
     }
     if (files.length < 1) {
-      setErr("Add at least one image from your device or camera.");
+      setErr("Add at least one photo (JPG, PNG, or WebP) from gallery or camera.");
       return;
     }
     if (files.length > MAX_IMAGES) {
@@ -155,11 +176,39 @@ export default function PostListingPage() {
     }
   }
 
+  function applyGalleryFiles(list) {
+    const { ok, rejected } = partitionImageFiles(list);
+    const next = ok.slice(0, MAX_IMAGES);
+    setFiles(next);
+    if (rejected.length) {
+      setErr(
+        `Not supported (use JPG, PNG, or WebP only — not HEIC, GIF, etc.): ${rejected.slice(0, 4).join(", ")}${rejected.length > 4 ? "…" : ""}`
+      );
+    } else if (next.length >= MAX_IMAGES) {
+      setErr(`Maximum ${MAX_IMAGES} photos.`);
+    } else {
+      setErr("");
+    }
+  }
+
+  function appendCameraFiles(list) {
+    const { ok, rejected } = partitionImageFiles(list);
+    if (!ok.length && !rejected.length) return;
+    setFiles((prev) => [...prev, ...ok].slice(0, MAX_IMAGES));
+    if (rejected.length) {
+      setErr(
+        `That photo type is not allowed (use JPG, PNG, or WebP). If the camera saved HEIC, change iPhone Settings → Camera → Formats to “Most Compatible”, or export the photo as JPEG.`
+      );
+      return;
+    }
+    setErr("");
+  }
+
   return (
     <form onSubmit={submit} className="mx-auto max-w-xl space-y-3 rounded bg-white p-4 shadow">
-      <h1 className="text-xl font-bold">Post Listing</h1>
+      <h1 className="text-xl font-bold">Sell an item</h1>
       <p className="text-sm text-gray-600">
-        You are logged in. You must still be approved as a seller before posting.
+        You are logged in. You must still be approved as a seller before your listing goes live.
         {" "}
         <Link href="/apply-seller" className="text-brand underline">Apply as seller</Link>
       </p>
@@ -179,41 +228,51 @@ export default function PostListingPage() {
         <option value="">Select area</option>
         {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
-      <div className="space-y-2 rounded border p-2">
-        <p className="text-sm font-medium">Listing images</p>
-        <input
-          className="w-full rounded border p-2"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          onChange={(e) => {
-            const selected = Array.from(e.target.files || []).slice(0, MAX_IMAGES);
-            setFiles(selected);
-            if (selected.length >= MAX_IMAGES) setErr(`Max ${MAX_IMAGES} images selected.`);
-          }}
-        />
-        <input
-          className="w-full rounded border p-2"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={(e) => {
-            const incoming = Array.from(e.target.files || []);
-            setFiles((prev) => {
-              const merged = [...prev, ...incoming].slice(0, MAX_IMAGES);
-              if (merged.length >= MAX_IMAGES) setErr(`Max ${MAX_IMAGES} images selected.`);
-              return merged;
-            });
-          }}
-        />
-        <p className="text-xs text-gray-600">
-          {files.length} / {MAX_IMAGES} image(s) selected. You can use gallery or camera.
+      <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Listing photos</p>
+          <p className="mt-1 text-xs text-gray-600">
+            Allowed formats: <strong>JPG, JPEG, PNG, WebP</strong>. Other types (e.g. <strong>HEIC</strong>, GIF, PDF) are blocked by the uploader — convert or export as JPEG/PNG first.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex cursor-pointer flex-col rounded-lg border-2 border-dashed border-emerald-200 bg-white p-3 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50/40">
+            <span className="text-sm font-semibold text-gray-900">Choose from gallery</span>
+            <span className="mt-0.5 text-xs text-gray-600">Pick existing photos (multi-select)</span>
+            <input
+              className="mt-2 w-full min-w-0 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:font-medium file:text-white"
+              type="file"
+              accept={ACCEPT_ATTR}
+              multiple
+              onChange={(e) => {
+                applyGalleryFiles(Array.from(e.target.files || []));
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <label className="flex cursor-pointer flex-col rounded-lg border-2 border-dashed border-amber-200 bg-white p-3 shadow-sm transition hover:border-amber-400 hover:bg-amber-50/40">
+            <span className="text-sm font-semibold text-gray-900">Take photo with camera</span>
+            <span className="mt-0.5 text-xs text-gray-600">Opens the camera on phones; one shot at a time, then add more if needed</span>
+            <input
+              className="mt-2 w-full min-w-0 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-amber-600 file:px-3 file:py-1.5 file:font-medium file:text-white"
+              type="file"
+              accept={ACCEPT_ATTR}
+              capture="environment"
+              onChange={(e) => {
+                appendCameraFiles(Array.from(e.target.files || []));
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        <p className="text-xs font-medium text-gray-700">
+          {files.length} / {MAX_IMAGES} photo(s) ready to upload
         </p>
       </div>
       {err ? <p className="text-sm text-red-600">{err}</p> : null}
       {msg ? <p className="text-green-700">{msg}</p> : null}
       <button disabled={uploading} className="w-full rounded bg-brand py-2 text-white disabled:opacity-60">
-        {uploading ? "Uploading images..." : "Submit"}
+        {uploading ? "Uploading photos…" : "Publish listing"}
       </button>
     </form>
   );

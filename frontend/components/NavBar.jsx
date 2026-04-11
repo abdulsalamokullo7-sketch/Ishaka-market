@@ -177,7 +177,7 @@ export default function NavBar() {
         Home
       </NavLink>
       <NavLink href="/post-listing" active={isActive("/post-listing")}>
-        Post
+        Sell
       </NavLink>
       {logged ? <NavLink href="/orders" active={isActive("/orders")}>Orders</NavLink> : null}
       {logged ? <NavLink href="/messages" active={isActive("/messages")}>Messages</NavLink> : null}
@@ -279,7 +279,7 @@ export default function NavBar() {
         <div className="px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden">
           <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
             <BottomItem href="/" label="Home" icon="home" active={isActive("/")} />
-            <BottomItem href="/post-listing" label="Post" icon="plus" active={isActive("/post-listing")} />
+            <BottomItem href="/post-listing" label="Sell" icon="plus" active={isActive("/post-listing")} />
             {logged ? (
               <BottomItem href="/account" label="Account" icon="user" active={isActive("/account")} />
             ) : (
