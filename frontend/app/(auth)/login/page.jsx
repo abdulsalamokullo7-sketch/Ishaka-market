@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { registerUrl, safeReturnPath } from "../../../utils/api";
+import { markAuthSessionFresh, registerUrl, safeReturnPath } from "../../../utils/api";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ phone: "", password: "" });
@@ -33,6 +33,7 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("auth-change"));
+      markAuthSessionFresh();
       const next = returnTo ? safeReturnPath(returnTo) : "";
       router.push(next || "/");
     } catch (err) {

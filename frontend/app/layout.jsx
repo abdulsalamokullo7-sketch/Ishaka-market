@@ -1,6 +1,11 @@
 import "./globals.css";
-import NavBar from "../components/NavBar";
+import dynamic from "next/dynamic";
 import BackButton from "../components/BackButton";
+
+const NavBar = dynamic(() => import("../components/NavBar"), {
+  ssr: true,
+  loading: () => <header className="sticky top-0 z-30 h-14 border-b border-emerald-100/80 bg-white/90" aria-hidden />
+});
 
 export const metadata = {
   title: "Ishaka Market Hub",

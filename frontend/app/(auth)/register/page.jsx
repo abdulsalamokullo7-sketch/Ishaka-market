@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { safeReturnPath } from "../../../utils/api";
+import { markAuthSessionFresh, safeReturnPath } from "../../../utils/api";
 
 export default function RegisterPage() {
   const [areas, setAreas] = useState([]);
@@ -64,6 +64,7 @@ export default function RegisterPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("auth-change"));
+      markAuthSessionFresh();
       const next = returnTo ? safeReturnPath(returnTo) : "";
       const path = next || "/";
       setRedirectHint(path === "/" ? "the home page" : "where you left off");

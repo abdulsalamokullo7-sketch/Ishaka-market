@@ -1,9 +1,18 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
+const AUTH_SYNC_THROTTLE_MS = 120_000;
+const AUTH_SYNC_TS_KEY = "imh-auth-sync-at";
+let authSyncInFlight = null;
+
 export function clearAuth() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  try {
+    sessionStorage.removeItem(AUTH_SYNC_TS_KEY);
+  } catch {
+    /* ignore */
+  }
   window.dispatchEvent(new Event("auth-change"));
 }
 
@@ -118,6 +127,11 @@ export async function syncAuthSession() {
     if (data?.token && data?.user) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      try {
+        sessionStorage.setItem(AUTH_SYNC_TS_KEY, String(Date.now()));
+      } catch {
+        /* ignore */
+      }
       window.dispatchEvent(new Event("auth-change"));
       return data.user;
     }
@@ -125,4 +139,40 @@ export async function syncAuthSession() {
   } catch {
     return null;
   }
+}
+
+/**
+ * Same as syncAuthSession but skips the network call if we synced recently (full page reloads, nav).
+ * Use from NavBar. Admin gate and post-login flows should still use syncAuthSession when freshness matters.
+ */
+/** Call after login/register so NavBar throttling does not skip the session you just stored. */
+export function markAuthSessionFresh() {
+  try {
+    sessionStorage.setItem(AUTH_SYNC_TS_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function syncAuthSessionThrottled() {
+  if (typeof window === "undefined") return null;
+  if (!localStorage.getItem("token")) return null;
+  try {
+    const last = Number(sessionStorage.getItem(AUTH_SYNC_TS_KEY) || 0);
+    if (Date.now() - last < AUTH_SYNC_THROTTLE_MS) {
+      try {
+        const raw = localStorage.getItem("user");
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        /* fall through to network */
+      }
+    }
+  } catch {
+    /* fall through to network */
+  }
+  if (authSyncInFlight) return authSyncInFlight;
+  authSyncInFlight = syncAuthSession().finally(() => {
+    authSyncInFlight = null;
+  });
+  return authSyncInFlight;
 }

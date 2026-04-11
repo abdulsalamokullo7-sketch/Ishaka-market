@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { syncAuthSession } from "../utils/api";
+import { syncAuthSessionThrottled } from "../utils/api";
 import { cartCount } from "../utils/cart";
 
 function readToken() {
@@ -130,7 +130,7 @@ export default function NavBar() {
 
   useEffect(() => {
     if (readToken()) {
-      syncAuthSession()
+      syncAuthSessionThrottled()
         .then((u) => setRole(u?.role || ""))
         .catch(() => null);
     }
