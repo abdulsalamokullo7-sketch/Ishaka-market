@@ -8,13 +8,12 @@ import { registerUrl, safeReturnPath } from "../../../utils/api";
 export default function LoginPage() {
   const [form, setForm] = useState({ phone: "", password: "" });
   const [error, setError] = useState("");
-  const [mounted, setMounted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [authHint, setAuthHint] = useState("");
   const [returnTo, setReturnTo] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    setMounted(true);
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
       router.push("/");
@@ -46,7 +45,20 @@ export default function LoginPage() {
       <h1 className="text-xl font-bold">Login</h1>
       {authHint ? <p className="text-sm text-amber-700">{authHint}</p> : null}
       <input className="w-full rounded border p-2" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-      <input className="w-full rounded border p-2" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+      <div className="space-y-1">
+        <input
+          className="w-full rounded border p-2"
+          type={showPassword ? "text" : "password"}
+          placeholder="Password"
+          autoComplete="current-password"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+        />
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-600">
+          <input type="checkbox" className="rounded border-gray-300" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+          Show password
+        </label>
+      </div>
       <div className="rounded border bg-gray-50 p-2 text-xs text-gray-700">
         <p className="mb-2 font-medium">Admin sign in</p>
         <p>Use the admin account credentials to access admin settings.</p>

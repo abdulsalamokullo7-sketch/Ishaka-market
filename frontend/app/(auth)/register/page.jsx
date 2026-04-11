@@ -9,6 +9,9 @@ export default function RegisterPage() {
   const [areasErr, setAreasErr] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [created, setCreated] = useState(false);
+  const [redirectHint, setRedirectHint] = useState("");
   const [form, setForm] = useState({ full_name: "", phone: "", password: "", area_id: "" });
   const [returnTo, setReturnTo] = useState("");
   const router = useRouter();
@@ -62,7 +65,13 @@ export default function RegisterPage() {
       localStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("auth-change"));
       const next = returnTo ? safeReturnPath(returnTo) : "";
-      router.push(next || "/");
+      const path = next || "/";
+      setRedirectHint(path === "/" ? "the home page" : "where you left off");
+      setCreated(true);
+      setLoading(false);
+      window.setTimeout(() => {
+        router.replace(path);
+      }, 1800);
     } catch (e2) {
       const msg = e2.message || "Registration failed";
       setErr(
@@ -73,6 +82,23 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (created) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 rounded-lg border border-emerald-200 bg-emerald-50/90 p-6 text-center shadow">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white" aria-hidden>
+          <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-bold text-emerald-900">Account created</h1>
+        <p className="text-sm text-emerald-800">
+          You&apos;re signed in. Redirecting to {redirectHint}…
+        </p>
+        <p className="text-xs text-emerald-700/90">If nothing happens, you can open the site from the menu.</p>
+      </div>
+    );
   }
 
   return (
@@ -98,14 +124,20 @@ export default function RegisterPage() {
         value={form.phone}
         onChange={(e) => setForm({ ...form, phone: e.target.value })}
       />
-      <input
-        className="w-full rounded border p-2"
-        type="password"
-        placeholder="Password (min 6 characters)"
-        autoComplete="new-password"
-        value={form.password}
-        onChange={(e) => setForm({ ...form, password: e.target.value })}
-      />
+      <div className="space-y-1">
+        <input
+          className="w-full rounded border p-2"
+          type={showPassword ? "text" : "password"}
+          placeholder="Password (min 6 characters)"
+          autoComplete="new-password"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+        />
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-600">
+          <input type="checkbox" className="rounded border-gray-300" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+          Show password
+        </label>
+      </div>
       <select
         className="w-full rounded border p-2"
         value={form.area_id}
