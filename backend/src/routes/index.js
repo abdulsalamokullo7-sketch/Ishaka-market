@@ -208,6 +208,23 @@ router.post("/admin/areas", requireAuth, requireRole("admin"), validate(Joi.obje
   return res.status(201).json(rows[0]);
 });
 
+router.delete("/admin/areas/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { rows } = await pool.query("DELETE FROM areas WHERE id = $1::uuid RETURNING id", [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ message: "Area not found" });
+    return res.json({ ok: true });
+  } catch (err) {
+    if (err && err.code === "23503") {
+      return res.status(409).json({
+        message:
+          "Cannot delete this area while it is linked to users, seller applications, listings, or other data. Change those records to another area first."
+      });
+    }
+    console.error("admin delete area", err);
+    return res.status(500).json({ message: "Could not delete area." });
+  }
+});
+
 router.post("/admin/categories", requireAuth, requireRole("admin"), validate(Joi.object({
   name: Joi.string().min(2).max(120).required()
 })), async (req, res) => {
@@ -217,6 +234,22 @@ router.post("/admin/categories", requireAuth, requireRole("admin"), validate(Joi
     [req.body.name, slug]
   );
   return res.status(201).json(rows[0]);
+});
+
+router.delete("/admin/categories/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { rows } = await pool.query("DELETE FROM categories WHERE id = $1::uuid RETURNING id", [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ message: "Category not found" });
+    return res.json({ ok: true });
+  } catch (err) {
+    if (err && err.code === "23503") {
+      return res.status(409).json({
+        message: "Cannot delete this category while listings or applications still use it. Reassign or remove those records first."
+      });
+    }
+    console.error("admin delete category", err);
+    return res.status(500).json({ message: "Could not delete category." });
+  }
 });
 
 router.get("/listings", async (req, res) => {
@@ -913,6 +946,53 @@ router.get("/admin/delivery-fares", requireAuth, requireRole("admin"), async (_,
     ORDER BY df.created_at DESC
   `);
   return res.json(rows);
+});
+
+const patchDeliveryFareSchema = Joi.object({
+  distance_km: Joi.number().min(0).optional(),
+  fare_ugx: Joi.number().min(0).optional(),
+  active: Joi.boolean().optional()
+}).min(1);
+
+router.patch("/admin/delivery-fares/:id", requireAuth, requireRole("admin"), validate(patchDeliveryFareSchema), async (req, res) => {
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  if (req.body.distance_km !== undefined) {
+    sets.push(`distance_km = $${i++}`);
+    vals.push(req.body.distance_km);
+  }
+  if (req.body.fare_ugx !== undefined) {
+    sets.push(`fare_ugx = $${i++}`);
+    vals.push(req.body.fare_ugx);
+  }
+  if (req.body.active !== undefined) {
+    sets.push(`active = $${i++}`);
+    vals.push(req.body.active);
+  }
+  vals.push(req.params.id);
+  const { rows } = await pool.query(
+    `UPDATE delivery_fares SET ${sets.join(", ")} WHERE id = $${i}::uuid RETURNING *`,
+    vals
+  );
+  if (!rows[0]) return res.status(404).json({ message: "Fare not found" });
+  const { rows: full } = await pool.query(
+    `
+    SELECT df.*, fa.name AS from_area_name, ta.name AS to_area_name
+    FROM delivery_fares df
+    JOIN areas fa ON fa.id=df.from_area_id
+    JOIN areas ta ON ta.id=df.to_area_id
+    WHERE df.id = $1::uuid
+  `,
+    [req.params.id]
+  );
+  return res.json(full[0] || rows[0]);
+});
+
+router.delete("/admin/delivery-fares/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  const { rows } = await pool.query("DELETE FROM delivery_fares WHERE id = $1::uuid RETURNING id", [req.params.id]);
+  if (!rows[0]) return res.status(404).json({ message: "Fare not found" });
+  return res.json({ ok: true });
 });
 
 router.get("/admin/analytics", requireAuth, requireRole("admin"), async (_, res) => {
