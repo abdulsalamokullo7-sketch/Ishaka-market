@@ -83,6 +83,13 @@ function BottomIcon({ name }) {
       </svg>
     );
   }
+  if (name === "orders") {
+    return (
+      <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      </svg>
+    );
+  }
   return null;
 }
 
@@ -191,9 +198,11 @@ export default function NavBar() {
           My Account
         </NavLink>
       ) : null}
-      <NavLink href="/admin" active={isActive("/admin")}>
-        Admin
-      </NavLink>
+      {role === "admin" ? (
+        <NavLink href="/admin" active={isActive("/admin")}>
+          Admin
+        </NavLink>
+      ) : null}
       {logged !== true ? (
         <>
           <NavLink href="/login" active={isActive("/login")}>
@@ -290,8 +299,10 @@ export default function NavBar() {
             ) : (
               <BottomItem href="/login" label="Login" icon="login" active={isActive("/login")} />
             )}
-            {logged ? (
+            {logged && role === "admin" ? (
               <BottomItem href="/admin" label="Admin" icon="admin" active={isActive("/admin")} />
+            ) : logged ? (
+              <BottomItem href="/orders" label="Orders" icon="orders" active={isActive("/orders")} />
             ) : (
               <BottomItem href="/register" label="Join" icon="spark" active={isActive("/register")} />
             )}
