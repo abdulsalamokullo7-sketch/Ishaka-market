@@ -186,15 +186,15 @@ export default function NavBar() {
           Apply Seller
         </NavLink>
       ) : null}
-      {logged && role === "seller" ? (
-        <NavLink href="/seller-account" active={isActive("/seller-account")}>
+      {logged ? (
+        <NavLink href="/account" active={isActive("/account")}>
           My Account
         </NavLink>
       ) : null}
       <NavLink href="/admin" active={isActive("/admin")}>
         Admin
       </NavLink>
-      {logged === false ? (
+      {logged !== true ? (
         <>
           <NavLink href="/login" active={isActive("/login")}>
             Login
@@ -280,8 +280,8 @@ export default function NavBar() {
           <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
             <BottomItem href="/" label="Home" icon="home" active={isActive("/")} />
             <BottomItem href="/post-listing" label="Post" icon="plus" active={isActive("/post-listing")} />
-            {logged && role === "seller" ? (
-              <BottomItem href="/seller-account" label="Account" icon="user" active={isActive("/seller-account")} />
+            {logged ? (
+              <BottomItem href="/account" label="Account" icon="user" active={isActive("/account")} />
             ) : (
               <BottomItem href="/apply-seller" label="Apply" icon="user" active={isActive("/apply-seller")} />
             )}
