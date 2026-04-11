@@ -117,6 +117,15 @@ export default function SellerAccountPage() {
                 <p className="text-sm text-gray-600">
                   {l.area_name} · {Number(l.price).toLocaleString()} UGX · {(l.condition || "used").toUpperCase()}
                 </p>
+                <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                  <Link href={`/listing/${l.id}`} className="font-medium text-brand underline">
+                    View on site
+                  </Link>
+                  <span className="text-gray-300">|</span>
+                  <Link href={`/edit-listing/${l.id}`} className="font-medium text-brand underline">
+                    Edit details
+                  </Link>
+                </div>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 {l.is_available !== false ? (

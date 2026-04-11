@@ -674,26 +674,69 @@ router.delete("/seller/listings/:id", requireAuth, requireRole("seller"), async 
   return res.json({ ok: true });
 });
 
-router.patch(
-  "/seller/listings/:id",
-  requireAuth,
-  requireRole("seller"),
-  validate(
-    Joi.object({
-      is_available: Joi.boolean().required()
-    })
-  ),
-  async (req, res) => {
-    const seller = await pool.query("SELECT id FROM sellers WHERE user_id=$1 AND status='approved' LIMIT 1", [req.user.id]);
-    if (!seller.rows[0]) return res.status(403).json({ message: "Seller not approved" });
-    const { rows } = await pool.query(
-      `UPDATE listings SET is_available = $1, updated_at = NOW() WHERE id = $2 AND seller_id = $3 RETURNING *`,
-      [req.body.is_available, req.params.id, seller.rows[0].id]
-    );
-    if (!rows[0]) return res.status(404).json({ message: "Listing not found" });
-    return res.json(rows[0]);
+const patchSellerListingSchema = Joi.object({
+  is_available: Joi.boolean().optional(),
+  title: Joi.string().max(180).optional(),
+  description: Joi.string().max(4000).optional(),
+  price: Joi.number().min(0).optional(),
+  condition: Joi.string().valid("new", "used", "refurbished").optional(),
+  category_id: Joi.string().uuid().optional(),
+  area_id: Joi.string().uuid().optional(),
+  image_urls: Joi.array().items(Joi.string().uri()).min(1).max(5).optional()
+}).min(1);
+
+router.patch("/seller/listings/:id", requireAuth, requireRole("seller"), validate(patchSellerListingSchema), async (req, res) => {
+  const seller = await pool.query("SELECT id FROM sellers WHERE user_id=$1 AND status='approved' LIMIT 1", [req.user.id]);
+  if (!seller.rows[0]) return res.status(403).json({ message: "Seller not approved" });
+  const b = req.body;
+  const sets = [];
+  const vals = [];
+  let n = 1;
+  if (b.is_available !== undefined) {
+    sets.push(`is_available = $${n++}`);
+    vals.push(b.is_available);
   }
-);
+  if (b.title !== undefined) {
+    sets.push(`title = $${n++}`);
+    vals.push(String(b.title).trim());
+  }
+  if (b.description !== undefined) {
+    sets.push(`description = $${n++}`);
+    vals.push(String(b.description).trim());
+  }
+  if (b.price !== undefined) {
+    sets.push(`price = $${n++}`);
+    vals.push(b.price);
+  }
+  if (b.condition !== undefined) {
+    sets.push(`condition = $${n++}::listing_condition`);
+    vals.push(b.condition);
+  }
+  if (b.category_id !== undefined) {
+    sets.push(`category_id = $${n++}::uuid`);
+    vals.push(b.category_id);
+  }
+  if (b.area_id !== undefined) {
+    sets.push(`area_id = $${n++}::uuid`);
+    vals.push(b.area_id);
+  }
+  if (b.image_urls !== undefined) {
+    sets.push(`image_urls = $${n++}`);
+    vals.push(b.image_urls);
+  }
+  if (sets.length === 0) return res.status(400).json({ message: "No changes" });
+  sets.push("updated_at = NOW()");
+  const idIdx = vals.length + 1;
+  vals.push(req.params.id);
+  const sidIdx = vals.length + 1;
+  vals.push(seller.rows[0].id);
+  const { rows } = await pool.query(
+    `UPDATE listings SET ${sets.join(", ")} WHERE id = $${idIdx}::uuid AND seller_id = $${sidIdx}::uuid RETURNING *`,
+    vals
+  );
+  if (!rows[0]) return res.status(404).json({ message: "Listing not found" });
+  return res.json(rows[0]);
+});
 
 router.post("/delivery/calculate", validate(Joi.object({
   from_area_id: Joi.string().uuid().required(),
